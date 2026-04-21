@@ -232,3 +232,44 @@ def create_private_chat(request, user_id):
     )
     
     return redirect('chat_room', room_name=room_name)
+
+from django.http import JsonResponse
+
+@login_required
+def media_add_reaction(request, media_id):
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        reaction = data.get('reaction')
+        
+        media = get_object_or_404(MediaItem, id=media_id)
+        
+        # Инициализируем структуру реакций если её нет
+        if not media.reactions:
+            media.reactions = {'user_reactions': {}}
+        if 'user_reactions' not in media.reactions:
+            media.reactions['user_reactions'] = {}
+        
+        # Добавляем или убираем реакцию
+        user_id = str(request.user.id)
+        if media.reactions['user_reactions'].get(user_id) == reaction:
+            # Убираем реакцию
+            del media.reactions['user_reactions'][user_id]
+        else:
+            # Добавляем реакцию
+            media.reactions['user_reactions'][user_id] = reaction
+        
+        media.save()
+        
+        # Подсчитываем количество каждой реакции
+        reaction_counts = {}
+        for r in dict(MediaItem.REACTION_CHOICES).keys():
+            reaction_counts[r] = list(media.reactions['user_reactions'].values()).count(r)
+        
+        return JsonResponse({
+            'success': True,
+            'reactions': reaction_counts,
+            'user_reaction': media.reactions['user_reactions'].get(user_id)
+        })
+    
+    return JsonResponse({'success': False})

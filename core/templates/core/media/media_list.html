@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load custom_filters %}
 {% block title %}Медиатека{% endblock %}
 {% block content %}
 <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
@@ -11,25 +12,55 @@
     </a>
 </div>
 
-<div class="media-grid">
+<div class="media-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
     {% for media in media_items %}
-    <div class="media-item" onclick="window.location.href='{{ media.file.url }}'" style="cursor: pointer;">
-        <div class="media-preview">
-            {% if media.type == 'photo' %}📷{% else %}🎬{% endif %}
+    <div class="media-card" style="background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s;">
+        <!-- Превью -->
+        <div class="media-preview" style="height: 220px; background: #f0f2f5; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+            {% if media.type == 'photo' %}
+                <img src="{{ media.file.url }}" alt="{{ media.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+            {% else %}
+                <video style="width: 100%; height: 100%; object-fit: cover;">
+                    <source src="{{ media.file.url }}">
+                </video>
+                <div style="position: absolute; font-size: 48px; background: rgba(0,0,0,0.5); border-radius: 50%; padding: 15px;">
+                    🎬
+                </div>
+            {% endif %}
         </div>
-        <div class="media-info">
-            <div class="media-title">
-                <strong>{{ media.title|default:"Без названия" }}</strong>
+        
+        <!-- Информация -->
+        <div style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <h3 style="font-weight: 700; font-size: 16px;">{{ media.title|default:"Без названия" }}</h3>
+                <div style="font-size: 20px;">
+                    {% if media.type == 'photo' %}📷{% else %}🎬{% endif %}
+                </div>
             </div>
-            <div style="font-size: 11px; color: #718096; margin-top: 4px;">
-                <i class="fas fa-user"></i> {{ media.uploaded_by.username }}
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: #718096;">
+                <span><i class="fas fa-user"></i> {{ media.uploaded_by.username }}</span>
+                <span>•</span>
+                <span><i class="far fa-calendar-alt"></i> {{ media.created_at|date:"d.m.Y" }}</span>
             </div>
-            <div style="font-size: 11px; color: #718096;">
-                <i class="far fa-calendar-alt"></i> {{ media.created_at|date:"d.m.Y" }}
+            
+            <!-- Реакции -->
+            <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                {% for reaction in '👍,❤️,😂,😮,😢,🔥'|split:',' %}
+                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="{{ reaction }}" style="background: #f0f2f5; border: none; padding: 6px 12px; border-radius: 30px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px;">
+                    <span>{{ reaction }}</span>
+                    <span class="reaction-count-{{ media.id }}-{{ reaction|cut:' ' }}">{{ media.get_reaction_count|default:0 }}</span>
+                </button>
+                {% endfor %}
             </div>
-            <div style="margin-top: 8px;">
-                <a href="{{ media.file.url }}" target="_blank" class="btn btn-primary" style="padding: 4px 12px; font-size: 11px;">
+            
+            <!-- Кнопки действий -->
+            <div style="display: flex; gap: 10px;">
+                <a href="{{ media.file.url }}" target="_blank" class="btn btn-primary" style="flex: 1; padding: 8px; text-align: center; font-size: 13px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                     <i class="fas fa-eye"></i> Открыть
+                </a>
+                <a href="{{ media.file.url }}" download class="btn btn-secondary" style="flex: 1; padding: 8px; text-align: center; font-size: 13px;">
+                    <i class="fas fa-download"></i> Скачать
                 </a>
             </div>
         </div>
@@ -45,4 +76,71 @@
     </div>
     {% endfor %}
 </div>
+
+<script>
+    // Обработка реакций
+    document.querySelectorAll('.reaction-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const mediaId = this.dataset.mediaId;
+            const reaction = this.dataset.reaction;
+            
+            fetch(`/media/reaction/${mediaId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ reaction: reaction })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновляем счетчики реакций
+                    for (const [reactionType, count] of Object.entries(data.reactions)) {
+                        const countSpan = document.querySelector(`.reaction-count-${mediaId}-${reactionType}`);
+                        if (countSpan) {
+                            countSpan.textContent = count;
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+
+<style>
+    .media-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    
+    .reaction-btn:hover {
+        background: #e2e8f0 !important;
+        transform: scale(1.05);
+    }
+    
+    .media-preview img {
+        transition: transform 0.3s;
+    }
+    
+    .media-card:hover .media-preview img {
+        transform: scale(1.05);
+    }
+</style>
 {% endblock %}

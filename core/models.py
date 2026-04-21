@@ -127,3 +127,45 @@ class Message(models.Model):
         verbose_name = 'Сообщение'
         verbose_name_plural = 'Сообщения'
         ordering = ['created_at']
+
+class MediaItem(models.Model):
+    TYPE_CHOICES = (
+        ('photo', '📷 Фото'),
+        ('video', '🎬 Видео'),
+    )
+    
+    REACTION_CHOICES = (
+        ('👍', '👍'),
+        ('❤️', '❤️'),
+        ('😂', '😂'),
+        ('😮', '😮'),
+        ('😢', '😢'),
+        ('🔥', '🔥'),
+    )
+    
+    title = models.CharField('Название', max_length=200, blank=True)
+    file = models.FileField('Файл', upload_to='media/')
+    type = models.CharField('Тип', max_length=10, choices=TYPE_CHOICES)
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Загрузил')
+    created_at = models.DateTimeField('Загружено', auto_now_add=True)
+    
+    # Новые поля для реакций
+    reactions = models.JSONField('Реакции', default=dict)
+    
+    def __str__(self):
+        return self.title or f"{self.get_type_display()} от {self.created_at.date()}"
+    
+    def get_reaction_count(self, reaction_type):
+        return self.reactions.get(reaction_type, 0)
+    
+    def add_reaction(self, reaction_type, user_id):
+        if reaction_type not in dict(self.REACTION_CHOICES):
+            return
+        if 'user_reactions' not in self.reactions:
+            self.reactions['user_reactions'] = {}
+        self.reactions['user_reactions'][str(user_id)] = reaction_type
+        self.save()
+    
+    class Meta:
+        verbose_name = 'Медиафайл'
+        verbose_name_plural = 'Медиатека'
