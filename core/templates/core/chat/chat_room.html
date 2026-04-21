@@ -1,0 +1,113 @@
+{% extends 'core/base.html' %}
+{% block title %}Чат{% endblock %}
+{% block content %}
+<div class="card" style="height: calc(100vh - 160px); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+    <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h1 style="font-size: 24px; font-weight: 700; color: white;">💬 Семейный чат</h1>
+    </div>
+    
+    <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 20px; background: #f7fafc;">
+        <div style="text-align: center; color: #718096;">Загрузка чата...</div>
+    </div>
+    
+    <div style="padding: 20px; background: white; border-top: 1px solid #e2e8f0;">
+        <div style="display: flex; gap: 12px;">
+            <input type="text" id="message-input" placeholder="Напишите сообщение..." 
+                   style="flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
+            <button id="send-button" class="btn btn-primary" style="padding: 12px 24px;">
+                📤 Отправить
+            </button>
+        </div>
+        <div id="connection-status" style="font-size: 12px; color: #718096; margin-top: 8px; text-align: center;">
+            ⚡ Подключение...
+        </div>
+    </div>
+</div>
+
+<script>
+    const messagesDiv = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const statusDiv = document.getElementById('connection-status');
+    
+    let socket = null;
+    
+    function connectWebSocket() {
+        const wsUrl = `ws://${window.location.host}/ws/chat/general/`;
+        console.log('Connecting to:', wsUrl);
+        
+        socket = new WebSocket(wsUrl);
+        
+        socket.onopen = function() {
+            console.log('✅ WebSocket connected');
+            statusDiv.innerHTML = '✅ Подключено к чату';
+            statusDiv.style.color = '#48bb78';
+            messagesDiv.innerHTML = '<div style="text-align: center; color: #718096;">Чат готов! Напишите сообщение...</div>';
+        };
+        
+        socket.onmessage = function(e) {
+            console.log('📨 Message:', e.data);
+            const data = JSON.parse(e.data);
+            
+            if (data.type === 'message') {
+                const isMe = data.username === '{{ user.username }}';
+                const messageDiv = document.createElement('div');
+                messageDiv.style.marginBottom = '12px';
+                messageDiv.style.textAlign = isMe ? 'right' : 'left';
+                messageDiv.innerHTML = `
+                    <div style="display: inline-block; max-width: 70%; background: ${isMe ? '#667eea' : 'white'}; color: ${isMe ? 'white' : '#1a202c'}; padding: 10px 16px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <div style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">${data.username}</div>
+                        <div>${escapeHtml(data.message)}</div>
+                    </div>
+                `;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } else if (data.type === 'system') {
+                const sysDiv = document.createElement('div');
+                sysDiv.style.textAlign = 'center';
+                sysDiv.style.fontSize = '12px';
+                sysDiv.style.color = '#718096';
+                sysDiv.style.marginBottom = '8px';
+                sysDiv.innerHTML = data.message;
+                messagesDiv.appendChild(sysDiv);
+            }
+        };
+        
+        socket.onerror = function(e) {
+            console.error('❌ WebSocket error:', e);
+            statusDiv.innerHTML = '❌ Ошибка подключения. Обновите страницу.';
+            statusDiv.style.color = '#f56565';
+        };
+        
+        socket.onclose = function() {
+            console.log('❌ WebSocket closed');
+            statusDiv.innerHTML = '❌ Соединение потеряно. Переподключение...';
+            statusDiv.style.color = '#f56565';
+            setTimeout(connectWebSocket, 3000);
+        };
+    }
+    
+    function sendMessage() {
+        const message = messageInput.value.trim();
+        if (message && socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInput.value = '';
+        }
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    sendButton.onclick = sendMessage;
+    messageInput.onkeypress = function(e) {
+        if (e.key === 'Enter') sendMessage();
+    };
+    
+    connectWebSocket();
+</script>
+{% endblock %}

@@ -4,6 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import User, Task, Document, MediaItem
 from .forms import RegisterForm, TaskForm, DocumentForm, MediaItemForm
+from .models import ChatRoom, Message
+
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -155,3 +157,7 @@ def media_upload(request):
         form = MediaItemForm()
     
     return render(request, 'core/media/media_upload.html', {'form': form})
+
+
+def chat_room(request):
+    return render(request, 'core/chat/chat_room.html')

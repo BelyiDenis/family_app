@@ -90,3 +90,36 @@ class MediaItem(models.Model):
     class Meta:
         verbose_name = 'Медиафайл'
         verbose_name_plural = 'Медиатека'
+
+# Добавьте в импорты в начале файла, если их нет:
+from django.utils import timezone
+
+# Добавьте эти модели в конец файла:
+
+class ChatRoom(models.Model):
+    name = models.CharField('Название комнаты', max_length=100, unique=True)
+    is_private = models.BooleanField('Приватный чат', default=False)
+    participants = models.ManyToManyField(User, blank=True, related_name='chat_rooms')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        verbose_name = 'Чат-комната'
+        verbose_name_plural = 'Чат-комнаты'
+
+class Message(models.Model):
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+    content = models.TextField('Сообщение')
+    is_read = models.BooleanField('Прочитано', default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    def __str__(self):
+        return f"{self.sender.username}: {self.content[:50]}"
+    
+    class Meta:
+        verbose_name = 'Сообщение'
+        verbose_name_plural = 'Сообщения'
+        ordering = ['created_at']

@@ -19,4 +19,6 @@ urlpatterns = [
 
     path('media/', views.media_list, name='media_list'),
     path('media/upload/', views.media_upload, name='media_upload'),
+
+    path('chat/', views.chat_room, name='chat'),
 ]

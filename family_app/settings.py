@@ -10,13 +10,15 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
+    'daphne',  # ДОЛЖЕН БЫТЬ ПЕРВЫМ!
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',  # наше приложение
+    'channels',
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -47,9 +49,16 @@ TEMPLATES = [
     },
 ]
 
+# Важно: используем ASGI вместо WSGI
 WSGI_APPLICATION = 'family_app.wsgi.application'
+ASGI_APPLICATION = 'family_app.asgi.application'
 
-# База данных (SQLite для начала)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -81,6 +90,4 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Кастомная модель пользователя
 AUTH_USER_MODEL = 'core.User'
