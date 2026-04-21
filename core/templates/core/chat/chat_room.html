@@ -2,23 +2,47 @@
 {% block title %}Чат{% endblock %}
 {% block content %}
 <div class="card" style="height: calc(100vh - 160px); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
-    <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <h1 style="font-size: 24px; font-weight: 700; color: white;">💬 Семейный чат</h1>
+    <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="font-size: 24px; font-weight: 700; color: white;">
+                {% if room_name == 'general' %}💬 Общий чат{% else %}🔒 Приватный чат{% endif %}
+            </h1>
+        </div>
+        <a href="{% url 'chat_list' %}" class="btn btn-secondary" style="background: rgba(255,255,255,0.2); color: white;">
+            ← Все чаты
+        </a>
     </div>
     
     <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 20px; background: #f7fafc;">
-        <div style="text-align: center; color: #718096;">Загрузка чата...</div>
+        {% for message in messages %}
+        <div style="margin-bottom: 15px; text-align: {% if message.sender == user %}right{% else %}left{% endif %};">
+            <div style="display: inline-block; max-width: 70%; background: {% if message.sender == user %}#667eea{% else %}white{% endif %}; color: {% if message.sender == user %}white{% else %}#1a202c{% endif %}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px; opacity: 0.8;">
+                    {{ message.sender.username }}
+                </div>
+                <div>{{ message.content }}</div>
+                <div style="font-size: 10px; margin-top: 5px; opacity: 0.7;">
+                    {{ message.created_at|date:"H:i" }}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: #718096; padding: 50px;">
+            <div style="font-size: 56px; margin-bottom: 16px;">💬</div>
+            <p>Напишите первое сообщение!</p>
+        </div>
+        {% endfor %}
     </div>
     
     <div style="padding: 20px; background: white; border-top: 1px solid #e2e8f0;">
         <div style="display: flex; gap: 12px;">
             <input type="text" id="message-input" placeholder="Напишите сообщение..." 
-                   style="flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;">
-            <button id="send-button" class="btn btn-primary" style="padding: 12px 24px;">
+                   style="flex: 1; padding: 14px 18px; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 14px;">
+            <button id="send-button" class="btn btn-primary" style="padding: 14px 28px; border-radius: 30px;">
                 📤 Отправить
             </button>
         </div>
-        <div id="connection-status" style="font-size: 12px; color: #718096; margin-top: 8px; text-align: center;">
+        <div id="connection-status" style="font-size: 12px; color: #718096; margin-top: 10px; text-align: center;">
             ⚡ Подключение...
         </div>
     </div>
@@ -33,7 +57,7 @@
     let socket = null;
     
     function connectWebSocket() {
-        const wsUrl = `ws://${window.location.host}/ws/chat/general/`;
+        const wsUrl = `ws://${window.location.host}/ws/chat/{{ room_name }}/`;
         console.log('Connecting to:', wsUrl);
         
         socket = new WebSocket(wsUrl);
@@ -42,46 +66,37 @@
             console.log('✅ WebSocket connected');
             statusDiv.innerHTML = '✅ Подключено к чату';
             statusDiv.style.color = '#48bb78';
-            messagesDiv.innerHTML = '<div style="text-align: center; color: #718096;">Чат готов! Напишите сообщение...</div>';
         };
         
         socket.onmessage = function(e) {
-            console.log('📨 Message:', e.data);
             const data = JSON.parse(e.data);
+            console.log('Message:', data);
             
             if (data.type === 'message') {
                 const isMe = data.username === '{{ user.username }}';
                 const messageDiv = document.createElement('div');
-                messageDiv.style.marginBottom = '12px';
+                messageDiv.style.marginBottom = '15px';
                 messageDiv.style.textAlign = isMe ? 'right' : 'left';
                 messageDiv.innerHTML = `
-                    <div style="display: inline-block; max-width: 70%; background: ${isMe ? '#667eea' : 'white'}; color: ${isMe ? 'white' : '#1a202c'}; padding: 10px 16px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                        <div style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">${data.username}</div>
+                    <div style="display: inline-block; max-width: 70%; background: ${isMe ? '#667eea' : 'white'}; color: ${isMe ? 'white' : '#1a202c'}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">${escapeHtml(data.username)}</div>
                         <div>${escapeHtml(data.message)}</div>
                     </div>
                 `;
                 messagesDiv.appendChild(messageDiv);
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            } else if (data.type === 'system') {
-                const sysDiv = document.createElement('div');
-                sysDiv.style.textAlign = 'center';
-                sysDiv.style.fontSize = '12px';
-                sysDiv.style.color = '#718096';
-                sysDiv.style.marginBottom = '8px';
-                sysDiv.innerHTML = data.message;
-                messagesDiv.appendChild(sysDiv);
             }
         };
         
         socket.onerror = function(e) {
-            console.error('❌ WebSocket error:', e);
-            statusDiv.innerHTML = '❌ Ошибка подключения. Обновите страницу.';
+            console.error('WebSocket error:', e);
+            statusDiv.innerHTML = '❌ Ошибка подключения';
             statusDiv.style.color = '#f56565';
         };
         
         socket.onclose = function() {
-            console.log('❌ WebSocket closed');
-            statusDiv.innerHTML = '❌ Соединение потеряно. Переподключение...';
+            console.log('WebSocket closed');
+            statusDiv.innerHTML = '❌ Переподключение...';
             statusDiv.style.color = '#f56565';
             setTimeout(connectWebSocket, 3000);
         };
@@ -109,5 +124,6 @@
     };
     
     connectWebSocket();
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 </script>
 {% endblock %}

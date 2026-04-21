@@ -2,10 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import User, Task, Document, MediaItem
+from django.db import models
+from .models import User, Task, Document, MediaItem, ChatRoom, Message
 from .forms import RegisterForm, TaskForm, DocumentForm, MediaItemForm
-from .models import ChatRoom, Message
-
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -158,6 +157,78 @@ def media_upload(request):
     
     return render(request, 'core/media/media_upload.html', {'form': form})
 
+# Функции для чата
+@login_required
+def chat_list(request):
+    user = request.user
+    private_chats = ChatRoom.objects.filter(
+        room_type='private'
+    ).filter(
+        models.Q(participant1=user) | models.Q(participant2=user)
+    )
+    
+    chats_with_info = []
+    for chat in private_chats:
+        last_message = Message.objects.filter(room=chat).order_by('-created_at').first()
+        other_user = chat.get_other_user(user)
+        unread_count = Message.objects.filter(room=chat, is_read=False).exclude(sender=user).count()
+        
+        chats_with_info.append({
+            'chat': chat,
+            'last_message': last_message,
+            'other_user': other_user,
+            'unread_count': unread_count,
+        })
+    
+    chats_with_info.sort(key=lambda x: x['last_message'].created_at if x['last_message'] else '', reverse=True)
+    users = User.objects.exclude(id=user.id)
+    
+    context = {
+        'private_chats': chats_with_info,
+        'users': users,
+    }
+    return render(request, 'core/chat/chat_list.html', context)
 
-def chat_room(request):
-    return render(request, 'core/chat/chat_room.html')
+@login_required
+def chat_room(request, room_name='general'):
+    user = request.user
+    
+    if room_name != 'general':
+        try:
+            room = ChatRoom.objects.get(name=room_name)
+            if user not in [room.participant1, room.participant2]:
+                return redirect('chat_list')
+        except ChatRoom.DoesNotExist:
+            return redirect('chat_list')
+    
+    room, created = ChatRoom.objects.get_or_create(
+        name=room_name,
+        defaults={'room_type': 'general' if room_name == 'general' else 'private'}
+    )
+    
+    messages_list = Message.objects.filter(room=room).order_by('created_at')[:100]
+    
+    context = {
+        'messages': messages_list,
+        'room': room,
+        'room_name': room_name,
+    }
+    return render(request, 'core/chat/chat_room.html', context)
+
+@login_required
+def create_private_chat(request, user_id):
+    current_user = request.user
+    other_user = get_object_or_404(User, id=user_id)
+    
+    room_name = f"private_{min(current_user.id, other_user.id)}_{max(current_user.id, other_user.id)}"
+    
+    room, created = ChatRoom.objects.get_or_create(
+        name=room_name,
+        defaults={
+            'room_type': 'private',
+            'participant1': current_user,
+            'participant2': other_user
+        }
+    )
+    
+    return redirect('chat_room', room_name=room_name)

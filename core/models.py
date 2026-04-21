@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.urls import reverse
+from django.utils import timezone
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -33,21 +34,16 @@ class Task(models.Model):
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_tasks', verbose_name='Ответственный')
     deadline = models.DateTimeField('Дедлайн', null=True, blank=True)
     status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='todo')
-    priority = models.IntegerField('Приоритет', default=1, help_text='1-высокий, 5-низкий')
+    priority = models.IntegerField('Приоритет', default=1)
     created_at = models.DateTimeField('Создана', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлена', auto_now=True)
-
+    
     def __str__(self):
         return self.title
-
-    def get_absolute_url(self):
-        return reverse('task_detail', args=[self.id])
-
+    
     class Meta:
         verbose_name = 'Задача'
         verbose_name_plural = 'Задачи'
-        ordering = ['-priority', 'deadline']
-
 
 class Document(models.Model):
     CATEGORY_CHOICES = (
@@ -91,19 +87,27 @@ class MediaItem(models.Model):
         verbose_name = 'Медиафайл'
         verbose_name_plural = 'Медиатека'
 
-# Добавьте в импорты в начале файла, если их нет:
-from django.utils import timezone
-
-# Добавьте эти модели в конец файла:
-
 class ChatRoom(models.Model):
+    ROOM_TYPES = (
+        ('general', 'Общий чат'),
+        ('private', 'Приватный чат'),
+    )
+    
     name = models.CharField('Название комнаты', max_length=100, unique=True)
-    is_private = models.BooleanField('Приватный чат', default=False)
-    participants = models.ManyToManyField(User, blank=True, related_name='chat_rooms')
+    room_type = models.CharField('Тип чата', max_length=10, choices=ROOM_TYPES, default='general')
+    participant1 = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='chat_participant1')
+    participant2 = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='chat_participant2')
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
+        if self.room_type == 'private' and self.participant1 and self.participant2:
+            return f"Чат: {self.participant1.username} & {self.participant2.username}"
         return self.name
+    
+    def get_other_user(self, current_user):
+        if self.participant1 == current_user:
+            return self.participant2
+        return self.participant1
     
     class Meta:
         verbose_name = 'Чат-комната'
@@ -114,7 +118,7 @@ class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     content = models.TextField('Сообщение')
     is_read = models.BooleanField('Прочитано', default=False)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.sender.username}: {self.content[:50]}"
