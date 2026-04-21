@@ -1,0 +1,93 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ task.title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <div style="font-size: 48px; margin-bottom: 8px;">
+                {% if task.status == 'todo' %}📋
+                {% elif task.status == 'in_progress' %}🔄
+                {% elif task.status == 'review' %}👀
+                {% else %}✅
+                {% endif %}
+            </div>
+            <h1 style="font-size: 32px; font-weight: 800; color: #1a202c;">{{ task.title }}</h1>
+        </div>
+        <a href="{% url 'task_edit' task.id %}" class="btn btn-warning">
+            <i class="fas fa-edit"></i> Редактировать
+        </a>
+    </div>
+    
+    <div style="display: grid; gap: 20px;">
+        <div style="display: flex; align-items: center; padding: 16px; background: #f7fafc; border-radius: 16px;">
+            <div style="width: 40px; font-size: 24px;">📝</div>
+            <div style="flex: 1;">
+                <div style="font-size: 12px; color: #718096;">Описание</div>
+                <div style="font-weight: 500;">{{ task.description|default:"Нет описания" }}</div>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; padding: 16px; background: #f7fafc; border-radius: 16px;">
+            <div style="width: 40px; font-size: 24px;">👤</div>
+            <div style="flex: 1;">
+                <div style="font-size: 12px; color: #718096;">Ответственный</div>
+                <div style="font-weight: 500;">{{ task.assigned_to.username|default:"не назначен" }}</div>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; padding: 16px; background: #f7fafc; border-radius: 16px;">
+            <div style="width: 40px; font-size: 24px;">👨‍💻</div>
+            <div style="flex: 1;">
+                <div style="font-size: 12px; color: #718096;">Создал</div>
+                <div style="font-weight: 500;">{{ task.created_by.username }}</div>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; padding: 16px; background: #f7fafc; border-radius: 16px;">
+            <div style="width: 40px; font-size: 24px;">⏰</div>
+            <div style="flex: 1;">
+                <div style="font-size: 12px; color: #718096;">Дедлайн</div>
+                <div style="font-weight: 500; {% if task.deadline and task.deadline < now %}color: #f56565;{% endif %}">
+                    {{ task.deadline|date:"d.m.Y H:i"|default:"не указан" }}
+                    {% if task.deadline and task.deadline < now %} (Просрочена!){% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; padding: 16px; background: #f7fafc; border-radius: 16px;">
+            <div style="width: 40px; font-size: 24px;">🎯</div>
+            <div style="flex: 1;">
+                <div style="font-size: 12px; color: #718096;">Статус</div>
+                <div>
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+                        {% if task.status == 'todo' %}background: #fef3c7; color: #d97706;
+                        {% elif task.status == 'in_progress' %}background: #dbeafe; color: #2563eb;
+                        {% elif task.status == 'review' %}background: #fed7aa; color: #ea580c;
+                        {% else %}background: #d1fae5; color: #059669;{% endif %}">
+                        {{ task.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; padding: 16px; background: #f7fafc; border-radius: 16px;">
+            <div style="width: 40px; font-size: 24px;">📅</div>
+            <div style="flex: 1;">
+                <div style="font-size: 12px; color: #718096;">Создана</div>
+                <div style="font-weight: 500;">{{ task.created_at|date:"d.m.Y H:i" }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 32px; display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="{% url 'kanban' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к доске
+        </a>
+        {% if task.status != 'done' %}
+            <a href="{% url 'task_change_status' task.id 'done' %}" class="btn btn-success">
+                <i class="fas fa-check"></i> Отметить как выполненную
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

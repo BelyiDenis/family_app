@@ -1,0 +1,58 @@
+{% extends 'core/base.html' %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 30px auto;">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <div style="font-size: 64px; margin-bottom: 16px;">👋</div>
+        <h1 style="font-size: 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">Создайте аккаунт</h1>
+        <p style="color: #718096; margin-top: 8px;">Присоединяйтесь к семейному пространству</p>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="form-group">
+            <label>
+                {% if field.name == 'username' %}<i class="fas fa-user"></i>
+                {% elif field.name == 'email' %}<i class="fas fa-envelope"></i>
+                {% elif field.name == 'phone' %}<i class="fas fa-phone"></i>
+                {% elif field.name == 'role' %}<i class="fas fa-users"></i>
+                {% elif 'password' in field.name %}<i class="fas fa-lock"></i>
+                {% endif %}
+                {{ field.label }}
+            </label>
+            {{ field }}
+            {% if field.errors %}
+                <div style="color: #f56565; font-size: 12px; margin-top: 5px;">{{ field.errors.0 }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            <i class="fas fa-user-plus"></i> Зарегистрироваться
+        </button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+        <p style="color: #718096;">
+            Уже есть аккаунт? 
+            <a href="{% url 'login' %}" style="color: #667eea; text-decoration: none; font-weight: 600;">Войти</a>
+        </p>
+    </div>
+</div>
+
+<style>
+    input, select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    input:focus, select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends 'core/base.html' %}
+{% block title %}Дашборд{% endblock %}
+{% block content %}
+<div style="margin-bottom: 32px;">
+    <h1 style="font-size: 36px; font-weight: 800; color: white; margin-bottom: 8px;">
+        Привет, {{ user.username }}! 👋
+    </h1>
+    <p style="color: rgba(255,255,255,0.9); font-size: 18px;">
+        Добро пожаловать в ваше семейное пространство
+    </p>
+</div>
+
+<div class="stats-grid">
+    <div class="card stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-number">{{ tasks_total }}</div>
+        <div class="stat-label">Всего задач</div>
+        <div style="margin-top: 12px; font-size: 14px; color: #48bb78;">
+            {{ tasks_done }} выполнено
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-icon">📄</div>
+        <div class="stat-number">{{ recent_docs|length }}</div>
+        <div class="stat-label">Документов в хранилище</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-icon">🖼️</div>
+        <div class="stat-number">{{ recent_media|length }}</div>
+        <div class="stat-label">Фото и видео</div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-size: 20px; font-weight: 700;">📋 Последние задачи</h2>
+        <a href="{% url 'kanban' %}" style="color: #667eea; text-decoration: none;">Все задачи →</a>
+    </div>
+    
+    {% if recent_tasks %}
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            {% for task in recent_tasks %}
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f7fafc; border-radius: 12px;">
+                <div>
+                    <div style="font-weight: 700; margin-bottom: 4px;">{{ task.title }}</div>
+                    <div style="font-size: 12px; color: #718096;">
+                        <i class="far fa-calendar-alt"></i> {{ task.deadline|date:"d.m.Y H:i"|default:"без дедлайна" }}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <span style="padding: 4px 12px; background: #e2e8f0; border-radius: 20px; font-size: 12px;">
+                        {{ task.get_status_display }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 40px; color: #718096;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+            <p>Нет задач. Создайте первую!</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="action-grid" style="margin-top: 24px;">
+    <a href="{% url 'task_create' %}" class="btn btn-primary" style="justify-content: center;">
+        <i class="fas fa-plus"></i> Создать задачу
+    </a>
+    <a href="{% url 'document_upload' %}" class="btn btn-success" style="justify-content: center;">
+        <i class="fas fa-upload"></i> Загрузить документ
+    </a>
+    <a href="{% url 'media_upload' %}" class="btn" style="justify-content: center; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white;">
+        <i class="fas fa-image"></i> Добавить фото/видео
+    </a>
+</div>
+{% endblock %}

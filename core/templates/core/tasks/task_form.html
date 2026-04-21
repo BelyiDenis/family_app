@@ -1,0 +1,77 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 700px; margin: 0 auto;">
+    <div style="margin-bottom: 24px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">
+            {% if 'Создать' in title %}✨{% else %}✏️{% endif %}
+        </div>
+        <h1 style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">
+            {{ title }}
+        </h1>
+        <p style="color: #718096; margin-top: 8px;">
+            {% if 'Создать' in title %}Добавьте новую задачу для семьи{% else %}Отредактируйте детали задачи{% endif %}
+        </p>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label><i class="fas fa-heading"></i> Название задачи</label>
+            {{ form.title }}
+        </div>
+        
+        <div class="form-group">
+            <label><i class="fas fa-align-left"></i> Описание</label>
+            {{ form.description }}
+        </div>
+        
+        <div class="form-group">
+            <label><i class="fas fa-user-check"></i> Ответственный</label>
+            {{ form.assigned_to }}
+        </div>
+        
+        <div class="form-group">
+            <label><i class="far fa-calendar-alt"></i> Дедлайн</label>
+            {{ form.deadline }}
+        </div>
+        
+        <div class="form-group">
+            <label><i class="fas fa-chart-line"></i> Приоритет</label>
+            {{ form.priority }}
+            <div style="font-size: 12px; color: #718096; margin-top: 5px;">1 — высокий, 5 — низкий</div>
+        </div>
+        
+        <div class="form-group">
+            <label><i class="fas fa-tasks"></i> Статус</label>
+            {{ form.status }}
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Сохранить
+            </button>
+            <a href="{% url 'kanban' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Отмена
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+    input, select, textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+</style>
+{% endblock %}

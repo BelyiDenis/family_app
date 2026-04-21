@@ -1,0 +1,57 @@
+{% extends 'core/base.html' %}
+{% block title %}Документы{% endblock %}
+{% block content %}
+<div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+        <h1 style="font-size: 32px; font-weight: 800; color: white;">📄 Хранилище документов</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px;">Все важные семейные документы в одном месте</p>
+    </div>
+    <a href="{% url 'document_upload' %}" class="btn btn-success">
+        <i class="fas fa-upload"></i> Загрузить документ
+    </a>
+</div>
+
+<div class="docs-grid">
+    {% for doc in documents %}
+    <div class="doc-card" onclick="window.location.href='{% url 'document_detail' doc.id %}'" style="cursor: pointer;">
+        <div class="doc-icon">
+            {% if doc.category == 'passport' %}📘
+            {% elif doc.category == 'birth_cert' %}📄
+            {% elif doc.category == 'medical' %}🏥
+            {% elif doc.category == 'education' %}🎓
+            {% else %}📁
+            {% endif %}
+        </div>
+        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ doc.title }}</h3>
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+            <span style="padding: 4px 12px; background: #e2e8f0; border-radius: 20px; font-size: 12px;">
+                {{ doc.get_category_display }}
+            </span>
+            {% if doc.expiry_date %}
+            <span style="padding: 4px 12px; background: #fed7aa; border-radius: 20px; font-size: 12px;">
+                ⏰ до {{ doc.expiry_date|date:"d.m.Y" }}
+            </span>
+            {% endif %}
+        </div>
+        <div style="font-size: 12px; color: #718096;">
+            <i class="fas fa-user"></i> {{ doc.uploaded_by.username }} • 
+            <i class="far fa-calendar-alt"></i> {{ doc.created_at|date:"d.m.Y" }}
+        </div>
+        <div style="margin-top: 16px;">
+            <a href="{{ doc.file.url }}" target="_blank" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                <i class="fas fa-download"></i> Скачать
+            </a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card" style="grid-column: 1/-1; text-align: center; padding: 60px;">
+        <div style="font-size: 64px; margin-bottom: 16px;">📭</div>
+        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Нет документов</h3>
+        <p style="color: #718096; margin-bottom: 24px;">Загрузите первый документ в семейное хранилище</p>
+        <a href="{% url 'document_upload' %}" class="btn btn-primary">
+            <i class="fas fa-upload"></i> Загрузить документ
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

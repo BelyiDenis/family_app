@@ -1,0 +1,67 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div style="margin-bottom: 24px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">📤</div>
+        <h1 style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">
+            Загрузить документ
+        </h1>
+        <p style="color: #718096; margin-top: 8px;">Добавьте важный документ в семейное хранилище</p>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label><i class="fas fa-heading"></i> Название документа</label>
+            {{ form.title }}
+        </div>
+        
+        <div class="form-group">
+            <label><i class="fas fa-tag"></i> Категория</label>
+            {{ form.category }}
+        </div>
+        
+        <div class="form-group">
+            <label><i class="fas fa-file"></i> Файл (PDF, JPG, PNG)</label>
+            {{ form.file }}
+        </div>
+        
+        <div class="form-group">
+            <label><i class="far fa-calendar-alt"></i> Срок действия (если есть)</label>
+            {{ form.expiry_date }}
+            <div style="font-size: 12px; color: #718096; margin-top: 5px;">Необязательно, но поможет не забыть продлить документы</div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-upload"></i> Загрузить
+            </button>
+            <a href="{% url 'document_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Отмена
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+    input, select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    input:focus, select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    input[type="file"] {
+        padding: 10px;
+        background: #f7fafc;
+    }
+</style>
+{% endblock %}

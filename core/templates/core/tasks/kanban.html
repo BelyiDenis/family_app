@@ -1,0 +1,97 @@
+{% extends 'core/base.html' %}
+{% block title %}Задачи{% endblock %}
+{% block content %}
+<div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+        <h1 style="font-size: 32px; font-weight: 800; color: white;">📋 Семейный планировщик</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px;">Управляйте задачами всей семьи</p>
+    </div>
+    <a href="{% url 'task_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Новая задача
+    </a>
+</div>
+
+<div class="kanban-grid">
+    <div class="kanban-column">
+        <div class="kanban-header" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white;">
+            📋 Нужно сделать
+        </div>
+        {% for task in tasks.todo %}
+        <div class="task-card" onclick="window.location.href='{% url 'task_detail' task.id %}'">
+            <div class="task-title">{{ task.title }}</div>
+            <div class="task-meta">
+                <span><i class="fas fa-user"></i> {{ task.assigned_to.username|default:"не назначен" }}</span>
+                {% if task.deadline %}
+                <span><i class="far fa-calendar-alt"></i> {{ task.deadline|date:"d.m.y H:i" }}</span>
+                {% endif %}
+            </div>
+            <div style="margin-top: 12px;">
+                <a href="{% url 'task_change_status' task.id 'in_progress' %}" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">
+                    <i class="fas fa-play"></i> В работу
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 40px; color: #718096;">Нет задач</div>
+        {% endfor %}
+    </div>
+    
+    <div class="kanban-column">
+        <div class="kanban-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+            🔄 В процессе
+        </div>
+        {% for task in tasks.in_progress %}
+        <div class="task-card" onclick="window.location.href='{% url 'task_detail' task.id %}'">
+            <div class="task-title">{{ task.title }}</div>
+            <div class="task-meta">
+                <span><i class="fas fa-user"></i> {{ task.assigned_to.username|default:"не назначен" }}</span>
+            </div>
+            <div style="margin-top: 12px;">
+                <a href="{% url 'task_change_status' task.id 'review' %}" class="btn btn-warning" style="padding: 6px 12px; font-size: 12px;">
+                    <i class="fas fa-eye"></i> На проверку
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 40px; color: #718096;">Нет задач</div>
+        {% endfor %}
+    </div>
+    
+    <div class="kanban-column">
+        <div class="kanban-header" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
+            👀 На проверке
+        </div>
+        {% for task in tasks.review %}
+        <div class="task-card" onclick="window.location.href='{% url 'task_detail' task.id %}'">
+            <div class="task-title">{{ task.title }}</div>
+            <div class="task-meta">
+                <span><i class="fas fa-user"></i> {{ task.assigned_to.username|default:"не назначен" }}</span>
+            </div>
+            <div style="margin-top: 12px;">
+                <a href="{% url 'task_change_status' task.id 'done' %}" class="btn btn-success" style="padding: 6px 12px; font-size: 12px;">
+                    <i class="fas fa-check"></i> Принять
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 40px; color: #718096;">Нет задач</div>
+        {% endfor %}
+    </div>
+    
+    <div class="kanban-column">
+        <div class="kanban-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+            ✅ Сделано
+        </div>
+        {% for task in tasks.done %}
+        <div class="task-card" style="opacity: 0.7;">
+            <div class="task-title" style="text-decoration: line-through;">{{ task.title }}</div>
+            <div class="task-meta">
+                <span><i class="fas fa-check-circle"></i> {{ task.updated_at|date:"d.m.y" }}</span>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 40px; color: #718096;">Нет задач</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
