@@ -1,91 +1,214 @@
 {% extends 'core/base.html' %}
 {% block title %}Чат{% endblock %}
 {% block content %}
-<div class="card" style="height: calc(100vh - 160px); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
-    <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div>
-            <h1 style="font-size: 24px; font-weight: 700; color: white;">
-                {% if room_name == 'general' %}💬 Общий чат{% else %}🔒 Приватный чат{% endif %}
-            </h1>
+<style>
+    /* Выбор фона чата */
+    .chat-bg-default { background: #f7fafc; }
+    .chat-bg-dark { background: #1a202c; }
+    .chat-bg-mountains { background: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800') center/cover; }
+    .chat-bg-ocean { background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800') center/cover; }
+    .chat-bg-forest { background: url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800') center/cover; }
+    
+    /* Анимация для новых сообщений */
+    @keyframes messageAppear {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .message-item {
+        animation: messageAppear 0.2s ease;
+    }
+    
+    /* Стили для скроллбара */
+    #chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+    #chat-messages::-webkit-scrollbar-track {
+        background: #e2e8f0;
+        border-radius: 3px;
+    }
+    #chat-messages::-webkit-scrollbar-thumb {
+        background: #cbd5e0;
+        border-radius: 3px;
+    }
+    #chat-messages::-webkit-scrollbar-thumb:hover {
+        background: #a0aec0;
+    }
+</style>
+
+<div class="card" style="height: calc(100vh - 160px); display: flex; flex-direction: column; padding: 0; overflow: hidden; position: relative;">
+    <!-- Верхняя панель -->
+    <div style="padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-comments" style="color: white;"></i>
+            </div>
+            <div>
+                <h1 style="font-size: 18px; font-weight: 700; color: white;">
+                    {% if room_name == 'general' %}Общий чат{% else %}{% for p in room.participants.all %}{% if p != user %}{{ p.username }}{% endif %}{% endfor %}{% endif %}
+                </h1>
+                <div style="font-size: 12px; color: rgba(255,255,255,0.8);">
+                    {% if room_name == 'general' %}Все члены семьи{% else %}Приватный чат{% endif %}
+                </div>
+            </div>
         </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <!-- Кнопка выбора фона -->
+            <div class="bg-dropdown" style="position: relative;">
+                <button onclick="toggleBgMenu()" class="btn" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 12px;">
+                    <i class="fas fa-palette"></i> Фон
+                </button>
+                <div id="bg-menu" style="display: none; position: absolute; bottom: 50px; right: 0; background: white; border-radius: 16px; padding: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 100; min-width: 150px;">
+                    <div onclick="setChatBg('default')" style="padding: 8px 12px; cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 30px; height: 30px; background: #f7fafc; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+                        <span>Светлый</span>
+                    </div>
+                    <div onclick="setChatBg('dark')" style="padding: 8px 12px; cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 30px; height: 30px; background: #1a202c; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+                        <span>Тёмный</span>
+                    </div>
+                    <div onclick="setChatBg('mountains')" style="padding: 8px 12px; cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 30px; height: 30px; background: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=100') center/cover; border-radius: 8px;"></div>
+                        <span>Горы</span>
+                    </div>
+                    <div onclick="setChatBg('ocean')" style="padding: 8px 12px; cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 30px; height: 30px; background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=100') center/cover; border-radius: 8px;"></div>
+                        <span>Океан</span>
+                    </div>
+                    <div onclick="setChatBg('forest')" style="padding: 8px 12px; cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 30px; height: 30px; background: url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=100') center/cover; border-radius: 8px;"></div>
+                        <span>Лес</span>
+                    </div>
+                </div>
+            </div>
             <button id="video-call-btn" onclick="startVideoCall()" class="btn" style="background: rgba(255,255,255,0.2); color: white;">
-                <i class="fas fa-video"></i> Видеозвонок
+                <i class="fas fa-video"></i>
             </button>
             <button id="audio-call-btn" onclick="startAudioCall()" class="btn" style="background: rgba(255,255,255,0.2); color: white;">
-                <i class="fas fa-phone-alt"></i> Аудиозвонок
+                <i class="fas fa-phone-alt"></i>
             </button>
             <button id="end-call-btn" onclick="endCall()" class="btn" style="background: rgba(255,255,255,0.2); color: white; display: none;">
-                <i class="fas fa-phone-slash"></i> Завершить
+                <i class="fas fa-phone-slash"></i>
             </button>
             <a href="{% url 'chat_list' %}" class="btn" style="background: rgba(255,255,255,0.2); color: white;">
-                ← Все чаты
+                ←
             </a>
         </div>
     </div>
     
-    <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 20px; background: #f7fafc;">
+    <!-- Область сообщений с динамическим фоном -->
+    <div id="chat-messages" class="chat-bg-default" style="flex: 1; overflow-y: auto; padding: 20px;">
         {% for message in messages %}
-        <div style="margin-bottom: 15px; text-align: {% if message.sender == user %}right{% else %}left{% endif %};">
-            <div style="display: inline-block; max-width: 70%; background: {% if message.sender == user %}#667eea{% else %}white{% endif %}; color: {% if message.sender == user %}white{% else %}#1a202c{% endif %}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                {% if message.attachment %}
-                    {% if message.attachment_type == 'image' %}
-                        <img src="{{ message.attachment.url }}" alt="Image" style="max-width: 200px; max-height: 200px; border-radius: 12px; cursor: pointer;" onclick="window.open(this.src)">
-                    {% else %}
-                        <a href="{{ message.attachment.url }}" download style="color: inherit; text-decoration: none;">
-                            <i class="fas fa-paperclip"></i> {{ message.attachment.name|slice:"20:" }}
-                        </a>
+        <div class="message-item" style="margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; {% if message.sender == user %}justify-content: flex-end;{% endif %}">
+            {% if message.sender != user %}
+            <div class="message-avatar" style="width: 36px; height: 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">
+                {{ message.sender.username|first|upper }}
+            </div>
+            {% endif %}
+            <div style="max-width: 70%; {% if message.sender == user %}text-align: right;{% endif %}">
+                {% if message.sender != user %}
+                <div style="font-size: 11px; color: #718096; margin-bottom: 4px; margin-left: 4px;">
+                    {{ message.sender.username }}
+                </div>
+                {% endif %}
+                <div style="background: {% if message.sender == user %}#667eea{% else %}white{% endif %}; color: {% if message.sender == user %}white{% else %}#1a202c{% endif %}; padding: 10px 14px; border-radius: 18px; {% if message.sender == user %}border-bottom-right-radius: 4px;{% else %}border-bottom-left-radius: 4px;{% endif %} box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-block;">
+                    {% if message.attachment %}
+                        {% if message.attachment_type == 'image' %}
+                            <img src="{{ message.attachment.url }}" alt="Image" style="max-width: 200px; max-height: 200px; border-radius: 12px; cursor: pointer; margin-bottom: 6px;" onclick="window.open(this.src)">
+                        {% else %}
+                            <a href="{{ message.attachment.url }}" download style="color: inherit; text-decoration: none;">
+                                <i class="fas fa-paperclip"></i> {{ message.attachment.name|slice:"20:" }}
+                            </a>
+                        {% endif %}
                     {% endif %}
-                {% endif %}
-                {% if message.content %}
-                    <div>{{ message.content }}</div>
-                {% endif %}
-                <div style="font-size: 10px; margin-top: 5px; opacity: 0.7;">
+                    {% if message.content %}
+                        <div style="word-break: break-word;">{{ message.content }}</div>
+                    {% endif %}
+                </div>
+                <div style="font-size: 10px; color: #a0aec0; margin-top: 4px; display: flex; align-items: center; gap: 4px; {% if message.sender == user %}justify-content: flex-end;{% endif %}">
                     {{ message.created_at|date:"H:i" }}
+                    {% if message.sender == user %}
+                        {% if message.is_read %}
+                            <i class="fas fa-check-double" style="color: #48bb78; font-size: 10px;"></i>
+                        {% else %}
+                            <i class="fas fa-check" style="color: #a0aec0; font-size: 10px;"></i>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
+            {% if message.sender == user %}
+            <div class="message-avatar" style="width: 36px; height: 36px; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">
+                {{ message.sender.username|first|upper }}
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
     
-    <div style="padding: 20px; background: white; border-top: 1px solid #e2e8f0;">
+    <!-- Панель ввода -->
+    <div style="padding: 16px 20px; background: white; border-top: 1px solid #e2e8f0;">
         <div style="display: flex; gap: 12px;">
             <button onclick="document.getElementById('file-input').click()" class="btn btn-secondary" style="padding: 12px;">
                 <i class="fas fa-paperclip"></i>
             </button>
             <input type="file" id="file-input" accept="image/*,video/*,.pdf,.doc,.txt" style="display: none;" multiple>
             <input type="text" id="message-input" placeholder="Напишите сообщение..." 
-                   style="flex: 1; padding: 14px 18px; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 14px;">
-            <button id="send-button" class="btn btn-primary" style="padding: 14px 28px; border-radius: 30px;">
-                📤 Отправить
+                   style="flex: 1; padding: 12px 18px; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 14px; outline: none; transition: all 0.2s;">
+            <button id="send-button" class="btn btn-primary" style="padding: 12px 24px; border-radius: 30px;">
+                <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <div id="connection-status" style="font-size: 12px; color: #718096; margin-top: 10px; text-align: center;">
+        <div id="connection-status" style="font-size: 11px; color: #a0aec0; margin-top: 8px; text-align: center;">
             ⚡ Подключение...
         </div>
     </div>
 </div>
 
-<!-- Модальное окно для звонка -->
+<!-- Модальное окно для звонка (как ранее) -->
 <div id="video-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center;">
-    <div style="position: relative; width: 90%; max-width: 1000px; background: #1a202c; border-radius: 20px; overflow: hidden;">
-        <div style="padding: 15px 20px; background: #2d3748; color: white; display: flex; justify-content: space-between; align-items: center;">
-            <span id="call-icon"><i class="fas fa-video"></i> Видеозвонок</span>
-            <div>
-                <span id="call-status-text" style="font-size: 14px; margin-right: 15px;">⏳ Соединение...</span>
-                <button onclick="endCall()" style="background: #e53e3e; border: none; color: white; padding: 8px 20px; border-radius: 10px; cursor: pointer;">
-                    <i class="fas fa-phone-slash"></i> Завершить
-                </button>
+    <div style="position: relative; width: 95%; max-width: 1300px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+        <div style="padding: 16px 24px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-phone-alt" style="color: white; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div id="call-partner-name" style="color: white; font-weight: 600; font-size: 16px;">Соединение...</div>
+                    <div id="call-status-text" style="color: rgba(255,255,255,0.7); font-size: 12px;">⏳ Установка соединения...</div>
+                </div>
+            </div>
+            <button onclick="endCall()" style="background: #e53e3e; border: none; color: white; padding: 10px 24px; border-radius: 30px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-phone-slash"></i> Завершить
+            </button>
+        </div>
+        <div style="position: relative; background: #000; min-height: 60vh; display: flex; align-items: center; justify-content: center;">
+            <video id="remote-video" autoplay playsinline style="width: 100%; height: auto; max-height: 70vh; object-fit: cover; background: #000;"></video>
+            <div id="local-video-container" style="position: absolute; bottom: 20px; right: 20px; width: 200px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.3);">
+                <video id="local-video" autoplay muted playsinline style="width: 100%; height: auto; background: #2d3748;"></video>
+            </div>
+            <div id="audio-only-view" style="display: none; text-align: center; padding: 60px;">
+                <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <i class="fas fa-microphone" style="font-size: 48px; color: white;"></i>
+                </div>
+                <div id="audio-partner-name" style="font-size: 24px; font-weight: bold; color: white; margin-bottom: 8px;">Собеседник</div>
+                <div style="color: rgba(255,255,255,0.7);">Аудиозвонок</div>
             </div>
         </div>
-        <div class="video-container" style="display: flex; gap: 10px; padding: 15px; position: relative; min-height: 500px;">
-            <video id="remote-video" autoplay playsinline style="flex: 1; background: #000; border-radius: 10px; object-fit: cover;"></video>
-            <video id="local-video" autoplay muted playsinline style="width: 200px; position: absolute; bottom: 25px; right: 25px; background: #000; border-radius: 10px; object-fit: cover; border: 2px solid white;"></video>
-        </div>
-        <div id="audio-only-view" style="display: none; text-align: center; padding: 60px 20px;">
-            <div style="font-size: 64px; margin-bottom: 16px;">🎙️</div>
-            <div style="font-size: 18px; font-weight: bold; color: white;">Аудиозвонок</div>
-            <div style="color: #a0aec0; margin-top: 8px;">Говорите, вас слышат</div>
+        <div style="padding: 20px 24px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: flex; justify-content: center; gap: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <button id="call-toggle-mic" onclick="toggleMicrophone()" style="background: #2d3748; border: none; color: white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer;">
+                <i class="fas fa-microphone" style="font-size: 20px;"></i>
+            </button>
+            <button id="call-toggle-video" onclick="toggleCamera()" style="background: #2d3748; border: none; color: white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer;">
+                <i class="fas fa-video" style="font-size: 20px;"></i>
+            </button>
+            <button onclick="endCall()" style="background: #e53e3e; border: none; color: white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer;">
+                <i class="fas fa-phone-slash" style="font-size: 20px;"></i>
+            </button>
         </div>
     </div>
 </div>
@@ -97,8 +220,9 @@
     let peerConnection = null;
     let isCallActive = false;
     let isAudioOnly = false;
+    let isMicMuted = false;
+    let isVideoOff = false;
     
-    // Конфигурация STUN серверов
     const configuration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -120,22 +244,81 @@
     const localVideo = document.getElementById('local-video');
     const remoteVideo = document.getElementById('remote-video');
     const callStatusSpan = document.getElementById('call-status-text');
-    const callIcon = document.getElementById('call-icon');
     const audioOnlyView = document.getElementById('audio-only-view');
-    const videoContainer = document.querySelector('.video-container');
     const videoCallBtn = document.getElementById('video-call-btn');
     const audioCallBtn = document.getElementById('audio-call-btn');
     const endCallBtn = document.getElementById('end-call-btn');
+    const callPartnerName = document.getElementById('call-partner-name');
+    const audioPartnerName = document.getElementById('audio-partner-name');
+    
+    // ==================== ФУНКЦИИ ФОНА ====================
+    function toggleBgMenu() {
+        const menu = document.getElementById('bg-menu');
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    function setChatBg(theme) {
+        messagesDiv.className = '';
+        messagesDiv.classList.add(`chat-bg-${theme}`);
+        localStorage.setItem('chatBgTheme', theme);
+        document.getElementById('bg-menu').style.display = 'none';
+    }
+    
+    // Загрузка сохранённой темы
+    const savedTheme = localStorage.getItem('chatBgTheme');
+    if (savedTheme && savedTheme !== 'default') {
+        setChatBg(savedTheme);
+    }
+    
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.bg-dropdown')) {
+            document.getElementById('bg-menu').style.display = 'none';
+        }
+    });
+    
+    // ==================== УПРАВЛЕНИЕ МИКРОФОНОМ/КАМЕРОЙ ====================
+    function toggleMicrophone() {
+        if (!localStream) return;
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            isMicMuted = !isMicMuted;
+            audioTrack.enabled = !isMicMuted;
+            const btn = document.getElementById('call-toggle-mic');
+            const icon = btn.querySelector('i');
+            if (isMicMuted) {
+                icon.className = 'fas fa-microphone-slash';
+                btn.style.background = '#e53e3e';
+            } else {
+                icon.className = 'fas fa-microphone';
+                btn.style.background = '#2d3748';
+            }
+        }
+    }
+    
+    function toggleCamera() {
+        if (!localStream || isAudioOnly) return;
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            isVideoOff = !isVideoOff;
+            videoTrack.enabled = !isVideoOff;
+            const btn = document.getElementById('call-toggle-video');
+            const icon = btn.querySelector('i');
+            if (isVideoOff) {
+                icon.className = 'fas fa-video-slash';
+                btn.style.background = '#e53e3e';
+            } else {
+                icon.className = 'fas fa-video';
+                btn.style.background = '#2d3748';
+            }
+        }
+    }
     
     // ==================== WEBSOCKET ====================
     function connectWebSocket() {
         const wsUrl = `ws://${window.location.host}/ws/chat/{{ room_name }}/`;
-        console.log('Connecting to:', wsUrl);
-        
         socket = new WebSocket(wsUrl);
         
         socket.onopen = function() {
-            console.log('✅ WebSocket connected');
             statusDiv.innerHTML = '✅ Подключено к чату';
             statusDiv.style.color = '#48bb78';
             markAsRead();
@@ -143,8 +326,6 @@
         
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            console.log('Message type:', data.type);
-            
             if (data.type === 'message') {
                 displayMessage(data);
                 if (document.hasFocus() && data.username !== '{{ user.username }}') {
@@ -154,7 +335,7 @@
                 if (data.is_typing && data.username !== '{{ user.username }}') {
                     statusDiv.innerHTML = `✏️ ${data.username} печатает...`;
                     statusDiv.style.color = '#ed8936';
-                } else if (!data.is_typing) {
+                } else {
                     statusDiv.innerHTML = '✅ Подключено к чату';
                     statusDiv.style.color = '#48bb78';
                 }
@@ -163,16 +344,8 @@
             }
         };
         
-        socket.onerror = function(e) {
-            console.error('WebSocket error:', e);
-            statusDiv.innerHTML = '❌ Ошибка подключения';
-            statusDiv.style.color = '#f56565';
-        };
-        
         socket.onclose = function() {
-            console.log('WebSocket closed');
             statusDiv.innerHTML = '❌ Переподключение...';
-            statusDiv.style.color = '#f56565';
             setTimeout(connectWebSocket, 3000);
         };
     }
@@ -181,26 +354,36 @@
     function displayMessage(data) {
         const isMe = data.username === '{{ user.username }}';
         const messageDiv = document.createElement('div');
-        messageDiv.style.marginBottom = '15px';
-        messageDiv.style.textAlign = isMe ? 'right' : 'left';
+        messageDiv.className = 'message-item';
+        messageDiv.style.marginBottom = '16px';
+        messageDiv.style.display = 'flex';
+        messageDiv.style.alignItems = 'flex-start';
+        messageDiv.style.gap = '10px';
+        messageDiv.style.justifyContent = isMe ? 'flex-end' : 'flex-start';
         
         let attachmentHtml = '';
         if (data.attachment) {
             if (data.attachment.type === 'image') {
-                attachmentHtml = `<img src="${data.attachment.url}" style="max-width: 200px; max-height: 200px; border-radius: 12px; cursor: pointer;" onclick="window.open(this.src)">`;
+                attachmentHtml = `<img src="${data.attachment.url}" style="max-width: 200px; border-radius: 12px; cursor: pointer; margin-bottom: 6px;" onclick="window.open(this.src)">`;
             } else {
                 attachmentHtml = `<a href="${data.attachment.url}" download style="color: inherit;"><i class="fas fa-paperclip"></i> ${data.attachment.filename}</a>`;
             }
         }
         
         messageDiv.innerHTML = `
-            <div style="display: inline-block; max-width: 70%;">
-                <div style="background: ${isMe ? '#667eea' : 'white'}; color: ${isMe ? 'white' : '#1a202c'}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+            ${!isMe ? `<div class="message-avatar" style="width: 36px; height: 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">${data.username.charAt(0).toUpperCase()}</div>` : ''}
+            <div style="max-width: 70%; ${isMe ? 'text-align: right;' : ''}">
+                ${!isMe ? `<div style="font-size: 11px; color: #718096; margin-bottom: 4px; margin-left: 4px;">${escapeHtml(data.username)}</div>` : ''}
+                <div style="background: ${isMe ? '#667eea' : 'white'}; color: ${isMe ? 'white' : '#1a202c'}; padding: 10px 14px; border-radius: 18px; ${isMe ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'} box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-block;">
                     ${attachmentHtml}
-                    ${data.message ? `<div>${escapeHtml(data.message)}</div>` : ''}
-                    <div style="font-size: 10px; margin-top: 5px; opacity: 0.7;">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                    ${data.message ? `<div style="word-break: break-word;">${escapeHtml(data.message)}</div>` : ''}
+                </div>
+                <div style="font-size: 10px; color: #a0aec0; margin-top: 4px; display: flex; align-items: center; gap: 4px; ${isMe ? 'justify-content: flex-end;' : ''}">
+                    ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                    ${isMe ? `<i class="fas fa-check" style="color: #a0aec0; font-size: 10px;"></i>` : ''}
                 </div>
             </div>
+            ${isMe ? `<div class="message-avatar" style="width: 36px; height: 36px; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">${data.username.charAt(0).toUpperCase()}</div>` : ''}
         `;
         messagesDiv.appendChild(messageDiv);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -210,17 +393,13 @@
     function sendMessage() {
         const message = messageInput.value.trim();
         if (message && socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: 'message',
-                message: message
-            }));
+            socket.send(JSON.stringify({ type: 'message', message: message }));
             messageInput.value = '';
         }
     }
     
     function sendFile(file) {
         if (!socket || socket.readyState !== WebSocket.OPEN) return;
-        
         const reader = new FileReader();
         reader.onload = function(e) {
             socket.send(JSON.stringify({
@@ -234,17 +413,19 @@
     }
     
     fileInput.onchange = function(e) {
-        const files = Array.from(e.target.files);
-        files.forEach(file => sendFile(file));
+        Array.from(e.target.files).forEach(file => sendFile(file));
         fileInput.value = '';
     };
     
     sendButton.onclick = sendMessage;
     messageInput.onkeypress = function(e) {
         if (e.key === 'Enter') sendMessage();
+        if (e.key === 'Enter' && socket) {
+            socket.send(JSON.stringify({ type: 'typing', is_typing: false }));
+        }
     };
     
-    // ==================== ИНДИКАТОР ПЕЧАТИ ====================
+    // Индикатор печати
     let typingTimer;
     let isTyping = false;
     
@@ -281,33 +462,20 @@
     function markAsRead() {
         fetch(`/chat/mark_read/{{ room_name }}/`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': getCsrfToken(),
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success && data.updated > 0) {
-                console.log(`✅ Marked ${data.updated} messages as read`);
-            }
-        })
-        .catch(e => console.error('Error marking read:', e));
+            headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' }
+        }).catch(e => console.error('Error marking read:', e));
     }
     
     // ==================== WEBRTC ====================
     function handleWebRTCSignal(data) {
         if (!peerConnection) return;
-        
         if (data.signal_type === 'offer' && data.from_user !== '{{ user.username }}') {
             peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
             createAnswer();
         } else if (data.signal_type === 'answer' && data.from_user !== '{{ user.username }}') {
             peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
         } else if (data.signal_type === 'ice_candidate' && data.from_user !== '{{ user.username }}') {
-            if (data.candidate) {
-                peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-            }
+            if (data.candidate) peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
         } else if (data.signal_type === 'end_call') {
             endCall();
         }
@@ -334,136 +502,67 @@
     async function startVideoCall() {
         if (isCallActive) return;
         isAudioOnly = false;
-        
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('Ваш браузер не поддерживает видеозвонки');
-            return;
-        }
-        
         try {
-            callStatusSpan.textContent = '🎥 Запрос доступа...';
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            
             audioOnlyView.style.display = 'none';
-            videoContainer.style.display = 'flex';
             localVideo.style.display = 'block';
             remoteVideo.style.display = 'block';
-            callIcon.innerHTML = '<i class="fas fa-video"></i> Видеозвонок';
             localVideo.srcObject = localStream;
-            
             peerConnection = new RTCPeerConnection(configuration);
             peerConnection.onicecandidate = handleIceCandidate;
-            peerConnection.ontrack = (event) => {
-                remoteVideo.srcObject = event.streams[0];
-                callStatusSpan.textContent = '📞 В разговоре';
-            };
-            
+            peerConnection.ontrack = (event) => { remoteVideo.srcObject = event.streams[0]; callStatusSpan.textContent = '📞 В разговоре'; };
             localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            
             videoModal.style.display = 'flex';
             isCallActive = true;
             videoCallBtn.style.display = 'none';
             audioCallBtn.style.display = 'none';
             endCallBtn.style.display = 'inline-block';
-            callStatusSpan.textContent = '⏳ Соединение...';
-            
             await createOffer();
-        } catch (err) {
-            console.error('Video call error:', err);
-            alert('Ошибка доступа к камере/микрофону. Проверьте разрешения в браузере.');
-            endCall();
-        }
+        } catch(err) { alert('Ошибка доступа к камере/микрофону'); endCall(); }
     }
     
     async function startAudioCall() {
         if (isCallActive) return;
         isAudioOnly = true;
-        
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('Ваш браузер не поддерживает аудиозвонки');
-            return;
-        }
-        
         try {
-            callStatusSpan.textContent = '🎤 Запрос доступа...';
             localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-            
-            videoContainer.style.display = 'none';
+            videoModal.style.display = 'flex';
             audioOnlyView.style.display = 'block';
-            callIcon.innerHTML = '<i class="fas fa-phone-alt"></i> Аудиозвонок';
-            
+            localVideo.style.display = 'none';
+            remoteVideo.style.display = 'none';
             peerConnection = new RTCPeerConnection(configuration);
             peerConnection.onicecandidate = handleIceCandidate;
-            peerConnection.ontrack = (event) => {
-                callStatusSpan.textContent = '📞 В аудиозвонке';
-                const remoteAudio = new Audio();
-                remoteAudio.srcObject = event.streams[0];
-                remoteAudio.play();
-            };
-            
+            peerConnection.ontrack = (event) => { callStatusSpan.textContent = '📞 В аудиозвонке'; new Audio().srcObject = event.streams[0]; };
             localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            
-            videoModal.style.display = 'flex';
             isCallActive = true;
             videoCallBtn.style.display = 'none';
             audioCallBtn.style.display = 'none';
             endCallBtn.style.display = 'inline-block';
-            callStatusSpan.textContent = '⏳ Соединение...';
-            
             await createOffer();
-        } catch (err) {
-            console.error('Audio call error:', err);
-            alert('Ошибка доступа к микрофону. Проверьте разрешения в браузере.');
-            endCall();
-        }
+        } catch(err) { alert('Ошибка доступа к микрофону'); endCall(); }
     }
     
     function endCall() {
-        if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
-        }
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-        }
-        
+        if (peerConnection) peerConnection.close();
+        if (localStream) localStream.getTracks().forEach(track => track.stop());
         videoModal.style.display = 'none';
         isCallActive = false;
         videoCallBtn.style.display = 'inline-block';
         audioCallBtn.style.display = 'inline-block';
         endCallBtn.style.display = 'none';
-        
-        videoContainer.style.display = 'flex';
-        audioOnlyView.style.display = 'none';
-        localVideo.style.display = 'block';
-        remoteVideo.style.display = 'block';
-        
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: 'webrtc_end_call' }));
-        }
+        if (socket) socket.send(JSON.stringify({ type: 'webrtc_end_call' }));
     }
     
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
     
-    // Закрытие по Escape
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && videoModal.style.display === 'flex') {
-            endCall();
-        }
+        if (e.key === 'Escape' && videoModal.style.display === 'flex') endCall();
     });
     
-    // Отмечаем прочитанные при фокусе
-    window.addEventListener('focus', function() {
-        setTimeout(markAsRead, 500);
-    });
-    
-    // ==================== ЗАПУСК ====================
     connectWebSocket();
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 </script>
