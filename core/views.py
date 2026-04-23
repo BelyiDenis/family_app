@@ -239,13 +239,53 @@ def task_change_status(request, task_id, status):
 
 @login_required
 def document_list(request):
-    """Список документов"""
+    """Список документов с фильтрацией и сортировкой"""
     if not request.user.family:
         return redirect('family_setup')
     
-    documents = Document.objects.filter(family=request.user.family).order_by('-created_at')
-    return render(request, 'core/documents/document_list.html', {'documents': documents})
-
+    documents = Document.objects.filter(family=request.user.family)
+    
+    # Фильтрация по категории
+    category = request.GET.get('category', '')
+    if category:
+        documents = documents.filter(category=category)
+    
+    # Фильтрация по просроченным
+    show_expired = request.GET.get('expired', '')
+    if show_expired == 'yes':
+        documents = documents.filter(expiry_date__lt=timezone.now().date())
+    elif show_expired == 'no':
+        documents = documents.filter(expiry_date__gte=timezone.now().date())
+    
+    # Сортировка
+    sort_by = request.GET.get('sort', '-created_at')
+    if sort_by in ['title', '-title', 'created_at', '-created_at', 'expiry_date', '-expiry_date']:
+        documents = documents.order_by(sort_by)
+    else:
+        documents = documents.order_by('-created_at')
+    
+    # Поиск
+    search = request.GET.get('search', '')
+    if search:
+        documents = documents.filter(title__icontains=search)
+    
+    context = {
+        'documents': documents,
+        'current_category': category,
+        'current_sort': sort_by,
+        'current_expired': show_expired,
+        'current_search': search,
+        'categories': Document.CATEGORY_CHOICES,
+        'sort_options': [
+            ('-created_at', '📅 Новые сначала'),
+            ('created_at', '📅 Старые сначала'),
+            ('title', '🔤 Название А-Я'),
+            ('-title', '🔤 Название Я-А'),
+            ('expiry_date', '⏰ Срок действия (сначала ближайшие)'),
+            ('-expiry_date', '⏰ Срок действия (сначала дальние)'),
+        ],
+    }
+    return render(request, 'core/documents/document_list.html', context)
 
 @login_required
 def document_upload(request):
@@ -282,13 +322,57 @@ def document_detail(request, doc_id):
 
 @login_required
 def media_list(request):
-    """Список медиафайлов"""
+    """Список медиафайлов с фильтрацией и сортировкой"""
     if not request.user.family:
         return redirect('family_setup')
     
-    media_items = MediaItem.objects.filter(family=request.user.family).order_by('-created_at')
-    return render(request, 'core/media/media_list.html', {'media_items': media_items})
-
+    media_items = MediaItem.objects.filter(family=request.user.family)
+    
+    # Фильтрация по типу
+    media_type = request.GET.get('type', '')
+    if media_type in ['photo', 'video']:
+        media_items = media_items.filter(type=media_type)
+    
+    # Фильтрация по пользователю
+    user_id = request.GET.get('user', '')
+    if user_id:
+        media_items = media_items.filter(uploaded_by_id=user_id)
+    
+    # Сортировка
+    sort_by = request.GET.get('sort', '-created_at')
+    if sort_by in ['title', '-title', 'created_at', '-created_at']:
+        media_items = media_items.order_by(sort_by)
+    else:
+        media_items = media_items.order_by('-created_at')
+    
+    # Поиск
+    search = request.GET.get('search', '')
+    if search:
+        media_items = media_items.filter(title__icontains=search)
+    
+    # Получаем список пользователей для фильтра
+    users = User.objects.filter(family=request.user.family)
+    
+    context = {
+        'media_items': media_items,
+        'current_type': media_type,
+        'current_sort': sort_by,
+        'current_user': user_id,
+        'current_search': search,
+        'users': users,
+        'type_options': [
+            ('', 'Все типы'),
+            ('photo', '📷 Только фото'),
+            ('video', '🎬 Только видео'),
+        ],
+        'sort_options': [
+            ('-created_at', '📅 Новые сначала'),
+            ('created_at', '📅 Старые сначала'),
+            ('title', '🔤 Название А-Я'),
+            ('-title', '🔤 Название Я-А'),
+        ],
+    }
+    return render(request, 'core/media/media_list.html', context)
 
 @login_required
 def media_upload(request):
@@ -318,47 +402,34 @@ def media_add_reaction(request, media_id):
         return JsonResponse({'success': False, 'error': 'No family'})
     
     if request.method == 'POST':
+        import json
         try:
             data = json.loads(request.body)
             reaction = data.get('reaction')
-            
-            media = get_object_or_404(MediaItem, id=media_id, family=request.user.family)
-            
-            # Инициализируем структуру реакций если её нет
-            if not media.reactions:
-                media.reactions = {'user_reactions': {}}
-            if 'user_reactions' not in media.reactions:
-                media.reactions['user_reactions'] = {}
-            
-            # Добавляем или убираем реакцию
-            user_id = str(request.user.id)
-            user_reactions = media.reactions['user_reactions']
-            
-            if user_reactions.get(user_id) == reaction:
-                # Убираем реакцию
-                del user_reactions[user_id]
-            else:
-                # Добавляем реакцию
-                user_reactions[user_id] = reaction
-            
-            # Пересчитываем общее количество каждой реакции
-            reaction_counts = {}
-            for r in dict(MediaItem.REACTION_CHOICES).keys():
-                reaction_counts[r] = list(user_reactions.values()).count(r)
-                media.reactions[r] = reaction_counts[r]
-            
-            media.save()
-            
+        except:
+            reaction = request.POST.get('reaction')
+        
+        media = get_object_or_404(MediaItem, id=media_id, family=request.user.family)
+        
+        # Добавляем или убираем реакцию
+        media.add_reaction(reaction, request.user.id)
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
-                'reactions': reaction_counts,
-                'user_reaction': user_reactions.get(user_id)
+                'likes': media.likes,
+                'hearts': media.hearts,
+                'laughs': media.laughs,
+                'wows': media.wows,
+                'cries': media.cries,
+                'fires': media.fires,
+                'user_reaction': media.get_user_reaction(request.user.id),
             })
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+        
+        messages.success(request, 'Реакция обновлена!')
+        return redirect('media_list')
     
-    return JsonResponse({'success': False, 'error': 'Invalid method'})
-
+    return redirect('media_list')
 
 # ==================== ЧАТЫ ====================
 

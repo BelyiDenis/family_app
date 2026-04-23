@@ -11,6 +11,54 @@
     </a>
 </div>
 
+<!-- Фильтры и сортировка -->
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+        <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 12px; color: #718096;">🔍 Поиск</label>
+            <input type="text" name="search" value="{{ current_search }}" placeholder="Название документа..." style="width: 100%;">
+        </div>
+        
+        <div style="min-width: 150px;">
+            <label style="font-size: 12px; color: #718096;">📁 Категория</label>
+            <select name="category">
+                <option value="">Все категории</option>
+                {% for cat_value, cat_label in categories %}
+                <option value="{{ cat_value }}" {% if current_category == cat_value %}selected{% endif %}>{{ cat_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="min-width: 150px;">
+            <label style="font-size: 12px; color: #718096;">⏰ Срок действия</label>
+            <select name="expired">
+                <option value="">Все документы</option>
+                <option value="yes" {% if current_expired == 'yes' %}selected{% endif %}>Просроченные</option>
+                <option value="no" {% if current_expired == 'no' %}selected{% endif %}>Действующие</option>
+            </select>
+        </div>
+        
+        <div style="min-width: 180px;">
+            <label style="font-size: 12px; color: #718096;">📊 Сортировка</label>
+            <select name="sort">
+                {% for sort_value, sort_label in sort_options %}
+                <option value="{{ sort_value }}" {% if current_sort == sort_value %}selected{% endif %}>{{ sort_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div>
+            <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">
+                <i class="fas fa-filter"></i> Применить
+            </button>
+            <a href="{% url 'document_list' %}" class="btn btn-secondary" style="padding: 10px 20px;">
+                <i class="fas fa-undo"></i> Сбросить
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Результаты -->
 <div class="docs-grid">
     {% for doc in documents %}
     <div class="doc-card" onclick="window.location.href='{% url 'document_detail' doc.id %}'" style="cursor: pointer;">
@@ -28,8 +76,9 @@
                 {{ doc.get_category_display }}
             </span>
             {% if doc.expiry_date %}
-            <span style="padding: 4px 12px; background: #fed7aa; border-radius: 20px; font-size: 12px;">
+            <span style="padding: 4px 12px; background: {% if doc.is_expired %}#f56565{% else %}#fed7aa{% endif %}; border-radius: 20px; font-size: 12px;">
                 ⏰ до {{ doc.expiry_date|date:"d.m.Y" }}
+                {% if doc.is_expired %} (просрочен){% endif %}
             </span>
             {% endif %}
         </div>
@@ -46,12 +95,33 @@
     {% empty %}
     <div class="card" style="grid-column: 1/-1; text-align: center; padding: 60px;">
         <div style="font-size: 64px; margin-bottom: 16px;">📭</div>
-        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Нет документов</h3>
-        <p style="color: #718096; margin-bottom: 24px;">Загрузите первый документ в семейное хранилище</p>
+        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Документов не найдено</h3>
+        <p style="color: #718096; margin-bottom: 24px;">Попробуйте изменить параметры поиска или загрузите новый документ</p>
         <a href="{% url 'document_upload' %}" class="btn btn-primary">
             <i class="fas fa-upload"></i> Загрузить документ
         </a>
     </div>
     {% endfor %}
 </div>
+
+<!-- Информация о количестве -->
+{% if documents %}
+<div style="margin-top: 20px; text-align: center; color: rgba(255,255,255,0.7); font-size: 14px;">
+    Найдено документов: {{ documents|length }}
+</div>
+{% endif %}
+
+<style>
+    select, input[type="text"] {
+        padding: 10px 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        width: 100%;
+    }
+    select:focus, input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+</style>
 {% endblock %}

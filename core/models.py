@@ -197,72 +197,69 @@ class Document(models.Model):
 
 
 class MediaItem(models.Model):
-    """
-    Модель медиафайла (фото/видео) в медиатеке.
-    Привязана к семье.
-    """
     TYPE_CHOICES = (
         ('photo', '📷 Фото'),
         ('video', '🎬 Видео'),
     )
     
-    REACTION_CHOICES = (
-        ('👍', '👍'),
-        ('❤️', '❤️'),
-        ('😂', '😂'),
-        ('😮', '😮'),
-        ('😢', '😢'),
-        ('🔥', '🔥'),
-    )
-    
     title = models.CharField('Название', max_length=200, blank=True)
     file = models.FileField('Файл', upload_to='media/')
     type = models.CharField('Тип', max_length=10, choices=TYPE_CHOICES)
-    
-    # Привязка к семье (изоляция данных)
     family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name='media_items', verbose_name='Семья')
-    
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Загрузил')
     created_at = models.DateTimeField('Загружено', auto_now_add=True)
     
-    # Реакции (лайки и т.д.)
-    reactions = models.JSONField('Реакции', default=dict)
+    # Поля для реакций (отдельные поля вместо JSON)
+    likes = models.IntegerField('👍', default=0)
+    hearts = models.IntegerField('❤️', default=0)
+    laughs = models.IntegerField('😂', default=0)
+    wows = models.IntegerField('😮', default=0)
+    cries = models.IntegerField('😢', default=0)
+    fires = models.IntegerField('🔥', default=0)
+    
+    # Храним кто какую реакцию поставил
+    user_reactions = models.JSONField('Реакции пользователей', default=dict)
     
     def __str__(self):
         return self.title or f"{self.get_type_display()} от {self.created_at.date()}"
     
-    def get_reaction_count(self, reaction_type):
-        """Получить количество конкретной реакции"""
-        return self.reactions.get(reaction_type, 0)
-    
-    def get_user_reaction(self, user_id):
-        """Получить реакцию конкретного пользователя"""
-        user_reactions = self.reactions.get('user_reactions', {})
-        return user_reactions.get(str(user_id))
-    
     def add_reaction(self, reaction_type, user_id):
         """Добавить или убрать реакцию"""
-        if reaction_type not in dict(self.REACTION_CHOICES):
-            return False
+        reaction_map = {
+            '👍': 'likes',
+            '❤️': 'hearts',
+            '😂': 'laughs',
+            '😮': 'wows',
+            '😢': 'cries',
+            '🔥': 'fires',
+        }
         
-        if 'user_reactions' not in self.reactions:
-            self.reactions['user_reactions'] = {}
+        field_name = reaction_map.get(reaction_type, 'likes')
+        user_id_str = str(user_id)
         
-        user_reactions = self.reactions['user_reactions']
+        # Получаем текущую реакцию пользователя
+        current_reaction = self.user_reactions.get(user_id_str)
         
-        if user_reactions.get(str(user_id)) == reaction_type:
+        if current_reaction == reaction_type:
             # Убираем реакцию
-            del user_reactions[str(user_id)]
+            del self.user_reactions[user_id_str]
+            setattr(self, field_name, getattr(self, field_name) - 1)
         else:
-            # Добавляем реакцию
-            user_reactions[str(user_id)] = reaction_type
-        
-        # Пересчитываем общее количество каждой реакции
-        for reaction in dict(self.REACTION_CHOICES).keys():
-            self.reactions[reaction] = list(user_reactions.values()).count(reaction)
+            # Убираем старую реакцию если была
+            if current_reaction:
+                old_field = reaction_map.get(current_reaction, 'likes')
+                setattr(self, old_field, getattr(self, old_field) - 1)
+            
+            # Добавляем новую реакцию
+            self.user_reactions[user_id_str] = reaction_type
+            setattr(self, field_name, getattr(self, field_name) + 1)
         
         self.save()
         return True
+    
+    def get_user_reaction(self, user_id):
+        """Получить реакцию пользователя"""
+        return self.user_reactions.get(str(user_id))
     
     class Meta:
         verbose_name = 'Медиафайл'

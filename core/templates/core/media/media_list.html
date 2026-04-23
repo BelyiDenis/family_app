@@ -1,5 +1,4 @@
 {% extends 'core/base.html' %}
-{% load custom_filters %}
 {% block title %}Медиатека{% endblock %}
 {% block content %}
 <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
@@ -12,15 +11,62 @@
     </a>
 </div>
 
-<div class="media-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;">
+<!-- Фильтры и сортировка -->
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+        <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 12px; color: #718096;">🔍 Поиск</label>
+            <input type="text" name="search" value="{{ current_search }}" placeholder="Название..." style="width: 100%;">
+        </div>
+        
+        <div style="min-width: 130px;">
+            <label style="font-size: 12px; color: #718096;">🎬 Тип</label>
+            <select name="type">
+                {% for type_value, type_label in type_options %}
+                <option value="{{ type_value }}" {% if current_type == type_value %}selected{% endif %}>{{ type_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="min-width: 150px;">
+            <label style="font-size: 12px; color: #718096;">👤 Загрузил</label>
+            <select name="user">
+                <option value="">Все пользователи</option>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if current_user == user.id|stringformat:"s" %}selected{% endif %}>{{ user.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="min-width: 180px;">
+            <label style="font-size: 12px; color: #718096;">📊 Сортировка</label>
+            <select name="sort">
+                {% for sort_value, sort_label in sort_options %}
+                <option value="{{ sort_value }}" {% if current_sort == sort_value %}selected{% endif %}>{{ sort_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div>
+            <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">
+                <i class="fas fa-filter"></i> Применить
+            </button>
+            <a href="{% url 'media_list' %}" class="btn btn-secondary" style="padding: 10px 20px;">
+                <i class="fas fa-undo"></i> Сбросить
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Результаты -->
+<div class="media-grid">
     {% for media in media_items %}
-    <div class="media-card" style="background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s;">
-        <!-- Превью -->
-        <div class="media-preview" style="height: 220px; background: #f0f2f5; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+    <div class="media-card">
+        <div class="media-preview">
             {% if media.type == 'photo' %}
-                <img src="{{ media.file.url }}" alt="{{ media.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                <img src="{{ media.file.url }}" alt="{{ media.title }}">
             {% else %}
-                <video style="width: 100%; height: 100%; object-fit: cover;">
+                <video>
                     <source src="{{ media.file.url }}">
                 </video>
                 <div style="position: absolute; font-size: 48px; background: rgba(0,0,0,0.5); border-radius: 50%; padding: 15px;">
@@ -29,7 +75,6 @@
             {% endif %}
         </div>
         
-        <!-- Информация -->
         <div style="padding: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                 <h3 style="font-weight: 700; font-size: 16px;">{{ media.title|default:"Без названия" }}</h3>
@@ -44,19 +89,30 @@
                 <span><i class="far fa-calendar-alt"></i> {{ media.created_at|date:"d.m.Y" }}</span>
             </div>
             
-            <!-- Реакции -->
+            <!-- Реакции со счётчиками -->
             <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-                {% for reaction in '👍,❤️,😂,😮,😢,🔥'|split:',' %}
-                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="{{ reaction }}" style="background: #f0f2f5; border: none; padding: 6px 12px; border-radius: 30px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px;">
-                    <span>{{ reaction }}</span>
-                    <span class="reaction-count-{{ media.id }}-{{ reaction|cut:' ' }}">{{ media.get_reaction_count|default:0 }}</span>
+                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="👍">
+                    👍 <span class="reaction-count-{{ media.id }}-likes">{{ media.likes }}</span>
                 </button>
-                {% endfor %}
+                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="❤️">
+                    ❤️ <span class="reaction-count-{{ media.id }}-hearts">{{ media.hearts }}</span>
+                </button>
+                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="😂">
+                    😂 <span class="reaction-count-{{ media.id }}-laughs">{{ media.laughs }}</span>
+                </button>
+                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="😮">
+                    😮 <span class="reaction-count-{{ media.id }}-wows">{{ media.wows }}</span>
+                </button>
+                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="😢">
+                    😢 <span class="reaction-count-{{ media.id }}-cries">{{ media.cries }}</span>
+                </button>
+                <button class="reaction-btn" data-media-id="{{ media.id }}" data-reaction="🔥">
+                    🔥 <span class="reaction-count-{{ media.id }}-fires">{{ media.fires }}</span>
+                </button>
             </div>
             
-            <!-- Кнопки действий -->
             <div style="display: flex; gap: 10px;">
-                <a href="{{ media.file.url }}" target="_blank" class="btn btn-primary" style="flex: 1; padding: 8px; text-align: center; font-size: 13px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <a href="{{ media.file.url }}" target="_blank" class="btn btn-primary" style="flex: 1; padding: 8px; text-align: center; font-size: 13px;">
                     <i class="fas fa-eye"></i> Открыть
                 </a>
                 <a href="{{ media.file.url }}" download class="btn btn-secondary" style="flex: 1; padding: 8px; text-align: center; font-size: 13px;">
@@ -68,8 +124,8 @@
     {% empty %}
     <div class="card" style="grid-column: 1/-1; text-align: center; padding: 60px;">
         <div style="font-size: 64px; margin-bottom: 16px;">🖼️</div>
-        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Медиатека пуста</h3>
-        <p style="color: #718096; margin-bottom: 24px;">Загрузите первые семейные фото и видео</p>
+        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Медиафайлов не найдено</h3>
+        <p style="color: #718096; margin-bottom: 24px;">Попробуйте изменить параметры поиска или загрузите новый файл</p>
         <a href="{% url 'media_upload' %}" class="btn btn-primary">
             <i class="fas fa-upload"></i> Загрузить
         </a>
@@ -78,7 +134,7 @@
 </div>
 
 <script>
-    // Обработка реакций
+    // Обработка реакций с AJAX
     document.querySelectorAll('.reaction-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -89,22 +145,30 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({ reaction: reaction })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Обновляем счетчики реакций
-                    for (const [reactionType, count] of Object.entries(data.reactions)) {
-                        const countSpan = document.querySelector(`.reaction-count-${mediaId}-${reactionType}`);
-                        if (countSpan) {
-                            countSpan.textContent = count;
-                        }
-                    }
+                    // Обновляем счётчики
+                    document.querySelector(`.reaction-count-${mediaId}-likes`).textContent = data.likes;
+                    document.querySelector(`.reaction-count-${mediaId}-hearts`).textContent = data.hearts;
+                    document.querySelector(`.reaction-count-${mediaId}-laughs`).textContent = data.laughs;
+                    document.querySelector(`.reaction-count-${mediaId}-wows`).textContent = data.wows;
+                    document.querySelector(`.reaction-count-${mediaId}-cries`).textContent = data.cries;
+                    document.querySelector(`.reaction-count-${mediaId}-fires`).textContent = data.fires;
+                    
+                    // Визуальный фидбек
+                    this.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
                 }
-            });
+            })
+            .catch(error => console.error('Error:', error));
         });
     });
     
@@ -125,20 +189,59 @@
 </script>
 
 <style>
-    .media-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    select, input[type="text"] {
+        padding: 10px 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        width: 100%;
     }
-    
+    select:focus, input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    .reaction-btn {
+        background: #f0f2f5;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 30px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
     .reaction-btn:hover {
-        background: #e2e8f0 !important;
+        background: #e2e8f0;
         transform: scale(1.05);
     }
-    
+    .media-card {
+        transition: all 0.3s;
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .media-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    .media-preview {
+        height: 220px;
+        background: #f0f2f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
     .media-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
         transition: transform 0.3s;
     }
-    
     .media-card:hover .media-preview img {
         transform: scale(1.05);
     }
