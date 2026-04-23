@@ -11,33 +11,34 @@
     
     /* Анимация для новых сообщений */
     @keyframes messageAppear {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    .message-item {
-        animation: messageAppear 0.2s ease;
-    }
+    .message-item { animation: messageAppear 0.2s ease; }
     
     /* Стили для скроллбара */
-    #chat-messages::-webkit-scrollbar {
-        width: 6px;
+    #chat-messages::-webkit-scrollbar { width: 6px; }
+    #chat-messages::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 3px; }
+    #chat-messages::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
+    #chat-messages::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+    
+    /* Выпадающее меню фона - поверх всего */
+    .bg-dropdown {
+        position: relative;
     }
-    #chat-messages::-webkit-scrollbar-track {
-        background: #e2e8f0;
-        border-radius: 3px;
+    #bg-menu {
+        position: absolute;
+        bottom: 50px;
+        right: 0;
+        background: white;
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        z-index: 9999;
+        min-width: 150px;
     }
-    #chat-messages::-webkit-scrollbar-thumb {
-        background: #cbd5e0;
-        border-radius: 3px;
-    }
-    #chat-messages::-webkit-scrollbar-thumb:hover {
-        background: #a0aec0;
+    #video-modal {
+        z-index: 10000;
     }
 </style>
 
@@ -59,11 +60,11 @@
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
             <!-- Кнопка выбора фона -->
-            <div class="bg-dropdown" style="position: relative;">
+            <div class="bg-dropdown">
                 <button onclick="toggleBgMenu()" class="btn" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 12px;">
                     <i class="fas fa-palette"></i> Фон
                 </button>
-                <div id="bg-menu" style="display: none; position: absolute; bottom: 50px; right: 0; background: white; border-radius: 16px; padding: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 100; min-width: 150px;">
+                <div id="bg-menu" style="display: none;">
                     <div onclick="setChatBg('default')" style="padding: 8px 12px; cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
                         <div style="width: 30px; height: 30px; background: #f7fafc; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
                         <span>Светлый</span>
@@ -169,8 +170,8 @@
     </div>
 </div>
 
-<!-- Модальное окно для звонка (как ранее) -->
-<div id="video-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center;">
+<!-- Модальное окно для звонка -->
+<div id="video-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; align-items: center; justify-content: center;">
     <div style="position: relative; width: 95%; max-width: 1300px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
         <div style="padding: 16px 24px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -248,8 +249,6 @@
     const videoCallBtn = document.getElementById('video-call-btn');
     const audioCallBtn = document.getElementById('audio-call-btn');
     const endCallBtn = document.getElementById('end-call-btn');
-    const callPartnerName = document.getElementById('call-partner-name');
-    const audioPartnerName = document.getElementById('audio-partner-name');
     
     // ==================== ФУНКЦИИ ФОНА ====================
     function toggleBgMenu() {
@@ -264,11 +263,8 @@
         document.getElementById('bg-menu').style.display = 'none';
     }
     
-    // Загрузка сохранённой темы
     const savedTheme = localStorage.getItem('chatBgTheme');
-    if (savedTheme && savedTheme !== 'default') {
-        setChatBg(savedTheme);
-    }
+    if (savedTheme && savedTheme !== 'default') setChatBg(savedTheme);
     
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.bg-dropdown')) {
@@ -306,9 +302,11 @@
             if (isVideoOff) {
                 icon.className = 'fas fa-video-slash';
                 btn.style.background = '#e53e3e';
+                localVideo.style.opacity = '0.3';
             } else {
                 icon.className = 'fas fa-video';
                 btn.style.background = '#2d3748';
+                localVideo.style.opacity = '1';
             }
         }
     }
@@ -420,9 +418,6 @@
     sendButton.onclick = sendMessage;
     messageInput.onkeypress = function(e) {
         if (e.key === 'Enter') sendMessage();
-        if (e.key === 'Enter' && socket) {
-            socket.send(JSON.stringify({ type: 'typing', is_typing: false }));
-        }
     };
     
     // Индикатор печати
