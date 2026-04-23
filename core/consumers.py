@@ -29,7 +29,52 @@ class ChatConsumer(AsyncWebsocketConsumer):
             data = json.loads(text_data)
             message_type = data.get('type', 'message')
             
-            if message_type == 'message':
+            # WebRTC сигналинг
+            if message_type == 'webrtc_offer':
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'webrtc_signal',
+                        'signal_type': 'offer',
+                        'offer': data.get('offer'),
+                        'from_user': self.scope['user'].username,
+                    }
+                )
+            
+            elif message_type == 'webrtc_answer':
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'webrtc_signal',
+                        'signal_type': 'answer',
+                        'answer': data.get('answer'),
+                        'from_user': self.scope['user'].username,
+                    }
+                )
+            
+            elif message_type == 'webrtc_ice_candidate':
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'webrtc_signal',
+                        'signal_type': 'ice_candidate',
+                        'candidate': data.get('candidate'),
+                        'from_user': self.scope['user'].username,
+                    }
+                )
+            
+            elif message_type == 'webrtc_end_call':
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'webrtc_signal',
+                        'signal_type': 'end_call',
+                        'from_user': self.scope['user'].username,
+                    }
+                )
+            
+            # Обычные сообщения
+            elif message_type == 'message':
                 message = data.get('message', '')
                 username = self.scope['user'].username
                 
@@ -52,7 +97,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 filename = data.get('filename', 'file')
                 username = self.scope['user'].username
                 
-                # Сохраняем вложение
                 attachment_file = await self.save_attachment(attachment_data, filename, attachment_type)
                 
                 await self.save_message("", username, attachment_file, attachment_type)
@@ -84,6 +128,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
         except Exception as e:
             print(f"Error in receive: {e}")
+    
+    # WebRTC сигналинг
+    async def webrtc_signal(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'webrtc_signal',
+            'signal_type': event['signal_type'],
+            'offer': event.get('offer'),
+            'answer': event.get('answer'),
+            'candidate': event.get('candidate'),
+            'from_user': event['from_user'],
+        }))
     
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
@@ -126,7 +181,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         from django.core.files.base import ContentFile
         import base64
         
-        # Декодируем base64
         format, imgstr = attachment_data.split(';base64,') 
         ext = format.split('/')[-1]
         data = ContentFile(base64.b64decode(imgstr), name=f'{filename}.{ext}')

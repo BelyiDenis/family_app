@@ -8,34 +8,56 @@
                 {% if room_name == 'general' %}💬 Общий чат{% else %}🔒 Приватный чат{% endif %}
             </h1>
         </div>
-        <a href="{% url 'chat_list' %}" class="btn btn-secondary" style="background: rgba(255,255,255,0.2); color: white;">
-            ← Все чаты
-        </a>
+        <div style="display: flex; gap: 10px;">
+            <button id="video-call-btn" onclick="startVideoCall()" class="btn" style="background: rgba(255,255,255,0.2); color: white;">
+                <i class="fas fa-video"></i> Видеозвонок
+            </button>
+            <button id="end-call-btn" onclick="endVideoCall()" class="btn" style="background: rgba(255,255,255,0.2); color: white; display: none;">
+                <i class="fas fa-phone-slash"></i> Завершить
+            </button>
+            <a href="{% url 'chat_list' %}" class="btn" style="background: rgba(255,255,255,0.2); color: white;">
+                ← Все чаты
+            </a>
+        </div>
     </div>
     
     <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 20px; background: #f7fafc;">
         {% for message in messages %}
-        <div style="margin-bottom: 15px; text-align: {% if message.sender == user %}right{% else %}left{% endif %};">
-            <div style="display: inline-block; max-width: 70%; background: {% if message.sender == user %}#667eea{% else %}white{% endif %}; color: {% if message.sender == user %}white{% else %}#1a202c{% endif %}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px; opacity: 0.8;">
+        <div class="message-wrapper" style="margin-bottom: 15px; text-align: {% if message.sender == user %}right{% else %}left{% endif %};">
+            <div style="display: inline-block; max-width: 70%;">
+                {% if message.sender != user %}
+                <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #718096;">
                     {{ message.sender.username }}
                 </div>
-                <div>{{ message.content }}</div>
-                <div style="font-size: 10px; margin-top: 5px; opacity: 0.7;">
-                    {{ message.created_at|date:"H:i" }}
+                {% endif %}
+                <div style="background: {% if message.sender == user %}#667eea{% else %}white{% endif %}; color: {% if message.sender == user %}white{% else %}#1a202c{% endif %}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                    {% if message.attachment %}
+                        {% if message.attachment_type == 'image' %}
+                            <img src="{{ message.attachment.url }}" alt="Image" style="max-width: 200px; max-height: 200px; border-radius: 12px; cursor: pointer;" onclick="window.open(this.src)">
+                        {% else %}
+                            <a href="{{ message.attachment.url }}" download style="color: inherit; text-decoration: none;">
+                                <i class="fas fa-paperclip"></i> {{ message.attachment.name|slice:"20:" }}
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                    {% if message.content %}
+                        <div>{{ message.content }}</div>
+                    {% endif %}
+                    <div style="font-size: 10px; margin-top: 5px; opacity: 0.7;">
+                        {{ message.created_at|date:"H:i" }}
+                    </div>
                 </div>
             </div>
-        </div>
-        {% empty %}
-        <div style="text-align: center; color: #718096; padding: 50px;">
-            <div style="font-size: 56px; margin-bottom: 16px;">💬</div>
-            <p>Напишите первое сообщение!</p>
         </div>
         {% endfor %}
     </div>
     
     <div style="padding: 20px; background: white; border-top: 1px solid #e2e8f0;">
         <div style="display: flex; gap: 12px;">
+            <button onclick="document.getElementById('file-input').click()" class="btn btn-secondary" style="padding: 12px;">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <input type="file" id="file-input" accept="image/*,video/*,.pdf,.doc,.txt" style="display: none;" multiple>
             <input type="text" id="message-input" placeholder="Напишите сообщение..." 
                    style="flex: 1; padding: 14px 18px; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 14px;">
             <button id="send-button" class="btn btn-primary" style="padding: 14px 28px; border-radius: 30px;">
@@ -48,14 +70,60 @@
     </div>
 </div>
 
+<!-- Модальное окно для видеозвонка -->
+<div id="video-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center;">
+    <div style="position: relative; width: 90%; max-width: 1000px; background: #1a202c; border-radius: 20px; overflow: hidden;">
+        <div style="padding: 15px 20px; background: #2d3748; color: white; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fas fa-video"></i> Видеозвонок</span>
+            <div>
+                <span id="call-status" style="font-size: 14px; margin-right: 15px;">⏳ Соединение...</span>
+                <button onclick="endVideoCall()" style="background: #e53e3e; border: none; color: white; padding: 8px 20px; border-radius: 10px; cursor: pointer;">
+                    <i class="fas fa-phone-slash"></i> Завершить
+                </button>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; padding: 15px; position: relative; min-height: 500px;">
+            <video id="remote-video" autoplay playsinline style="flex: 1; background: #000; border-radius: 10px; object-fit: cover;"></video>
+            <video id="local-video" autoplay muted playsinline style="width: 200px; position: absolute; bottom: 25px; right: 25px; background: #000; border-radius: 10px; object-fit: cover; border: 2px solid white;"></video>
+        </div>
+    </div>
+</div>
+
 <script>
+    // WebSocket
+    let socket = null;
+    
+    // WebRTC
+    let localStream = null;
+    let peerConnection = null;
+    let isCallActive = false;
+    
+    // Конфигурация STUN серверов для WebRTC
+    const configuration = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.stunprotocol.org:3478' }
+        ],
+        iceCandidatePoolSize: 10
+    };
+    // DOM элементы
     const messagesDiv = document.getElementById('chat-messages');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const statusDiv = document.getElementById('connection-status');
+    const fileInput = document.getElementById('file-input');
+    const videoModal = document.getElementById('video-modal');
+    const localVideo = document.getElementById('local-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const callStatus = document.getElementById('call-status');
+    const videoCallBtn = document.getElementById('video-call-btn');
+    const endCallBtn = document.getElementById('end-call-btn');
     
-    let socket = null;
-    
+    // Подключение WebSocket
     function connectWebSocket() {
         const wsUrl = `ws://${window.location.host}/ws/chat/{{ room_name }}/`;
         console.log('Connecting to:', wsUrl);
@@ -73,18 +141,17 @@
             console.log('Message:', data);
             
             if (data.type === 'message') {
-                const isMe = data.username === '{{ user.username }}';
-                const messageDiv = document.createElement('div');
-                messageDiv.style.marginBottom = '15px';
-                messageDiv.style.textAlign = isMe ? 'right' : 'left';
-                messageDiv.innerHTML = `
-                    <div style="display: inline-block; max-width: 70%; background: ${isMe ? '#667eea' : 'white'}; color: ${isMe ? 'white' : '#1a202c'}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                        <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">${escapeHtml(data.username)}</div>
-                        <div>${escapeHtml(data.message)}</div>
-                    </div>
-                `;
-                messagesDiv.appendChild(messageDiv);
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                displayMessage(data);
+            } else if (data.type === 'typing') {
+                if (data.is_typing && data.username !== '{{ user.username }}') {
+                    statusDiv.innerHTML = `✏️ ${data.username} печатает...`;
+                    statusDiv.style.color = '#ed8936';
+                } else if (!data.is_typing) {
+                    statusDiv.innerHTML = '✅ Подключено к чату';
+                    statusDiv.style.color = '#48bb78';
+                }
+            } else if (data.type === 'webrtc_signal') {
+                handleWebRTCSignal(data);
             }
         };
         
@@ -102,15 +169,242 @@
         };
     }
     
+    // WebRTC сигналинг
+    function handleWebRTCSignal(data) {
+        if (!peerConnection) return;
+        
+        if (data.signal_type === 'offer' && data.from_user !== '{{ user.username }}') {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            createAnswer();
+        } else if (data.signal_type === 'answer' && data.from_user !== '{{ user.username }}') {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        } else if (data.signal_type === 'ice_candidate' && data.from_user !== '{{ user.username }}') {
+            if (data.candidate) {
+                peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        } else if (data.signal_type === 'end_call') {
+            endVideoCall();
+        }
+    }
+    
+    // Создание предложения (offer)
+    async function createOffer() {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        socket.send(JSON.stringify({
+            type: 'webrtc_offer',
+            offer: offer,
+        }));
+    }
+    
+    // Создание ответа (answer)
+    async function createAnswer() {
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        
+        socket.send(JSON.stringify({
+            type: 'webrtc_answer',
+            answer: answer,
+        }));
+    }
+    
+    // Обработка ICE кандидатов
+    function handleIceCandidate(event) {
+        if (event.candidate) {
+            socket.send(JSON.stringify({
+                type: 'webrtc_ice_candidate',
+                candidate: event.candidate,
+            }));
+        }
+    }
+    
+ async function startVideoCall() {
+    if (isCallActive) return;
+    
+    // Проверяем поддержку браузером
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Ваш браузер не поддерживает видеозвонки. Пожалуйста, используйте Chrome, Firefox или Edge.');
+        return;
+    }
+    
+    try {
+        // Запрашиваем доступ с явными параметрами
+        const constraints = {
+            video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: 'user'
+            },
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 44100
+            }
+        };
+        
+        console.log('Requesting camera/microphone access...');
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('Access granted!');
+        
+        localVideo.srcObject = localStream;
+        
+        peerConnection = new RTCPeerConnection(configuration);
+        peerConnection.onicecandidate = handleIceCandidate;
+        peerConnection.ontrack = (event) => {
+            console.log('Received remote track');
+            remoteVideo.srcObject = event.streams[0];
+            callStatus.textContent = '📞 В разговоре';
+        };
+        
+        localStream.getTracks().forEach(track => {
+            console.log('Adding track:', track.kind);
+            peerConnection.addTrack(track, localStream);
+        });
+        
+        videoModal.style.display = 'flex';
+        isCallActive = true;
+        callStatus.textContent = '⏳ Соединение...';
+        videoCallBtn.style.display = 'none';
+        endCallBtn.style.display = 'inline-block';
+        
+        await createOffer();
+        
+    } catch (err) {
+        console.error('Error starting video call:', err);
+        
+        if (err.name === 'NotAllowedError') {
+            alert('Доступ к камере и микрофону запрещён. Пожалуйста, разрешите доступ в настройках браузера.');
+        } else if (err.name === 'NotFoundError') {
+            alert('Камера или микрофон не найдены. Проверьте подключение устройств.');
+        } else if (err.name === 'NotReadableError') {
+            alert('Камера или микрофон уже используются другим приложением.');
+        } else if (err.name === 'OverconstrainedError') {
+            alert('Не удалось найти камеру с указанными параметрами.');
+        } else {
+            alert(`Ошибка: ${err.message}. Пожалуйста, проверьте доступ к камере и микрофону.`);
+        }
+        
+        endVideoCall();
+    }
+}
+    
+    // Завершение видеозвонка
+    function endVideoCall() {
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        
+        videoModal.style.display = 'none';
+        isCallActive = false;
+        videoCallBtn.style.display = 'inline-block';
+        endCallBtn.style.display = 'none';
+        
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'webrtc_end_call',
+            }));
+        }
+    }
+    
+    // Отображение сообщения
+    function displayMessage(data) {
+        const isMe = data.username === '{{ user.username }}';
+        const messageDiv = document.createElement('div');
+        messageDiv.style.marginBottom = '15px';
+        messageDiv.style.textAlign = isMe ? 'right' : 'left';
+        
+        let attachmentHtml = '';
+        if (data.attachment) {
+            if (data.attachment.type === 'image') {
+                attachmentHtml = `<img src="${data.attachment.url}" style="max-width: 200px; max-height: 200px; border-radius: 12px; cursor: pointer;" onclick="window.open(this.src)">`;
+            } else {
+                attachmentHtml = `<a href="${data.attachment.url}" download style="color: inherit;"><i class="fas fa-paperclip"></i> ${data.attachment.filename}</a>`;
+            }
+        }
+        
+        messageDiv.innerHTML = `
+            <div style="display: inline-block; max-width: 70%;">
+                ${!isMe ? `<div style="font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #718096;">${escapeHtml(data.username)}</div>` : ''}
+                <div style="background: ${isMe ? '#667eea' : 'white'}; color: ${isMe ? 'white' : '#1a202c'}; padding: 12px 18px; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                    ${attachmentHtml}
+                    ${data.message ? `<div>${escapeHtml(data.message)}</div>` : ''}
+                </div>
+            </div>
+        `;
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    
+    // Отправка сообщения
     function sendMessage() {
         const message = messageInput.value.trim();
         if (message && socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({
-                'message': message
+                type: 'message',
+                message: message
             }));
             messageInput.value = '';
         }
     }
+    
+    // Отправка файла
+    function sendFile(file) {
+        if (!socket || socket.readyState !== WebSocket.OPEN) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            socket.send(JSON.stringify({
+                type: 'attachment',
+                attachment: e.target.result,
+                attachment_type: file.type.startsWith('image/') ? 'image' : 'file',
+                filename: file.name
+            }));
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    fileInput.onchange = function(e) {
+        const files = Array.from(e.target.files);
+        files.forEach(file => sendFile(file));
+        fileInput.value = '';
+    };
+    
+    // Индикатор печати
+    let typingTimer;
+    let isTyping = false;
+    
+    messageInput.addEventListener('input', function() {
+        if (!isTyping && socket && socket.readyState === WebSocket.OPEN) {
+            isTyping = true;
+            socket.send(JSON.stringify({
+                type: 'typing',
+                is_typing: true
+            }));
+        }
+        
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            if (isTyping && socket && socket.readyState === WebSocket.OPEN) {
+                isTyping = false;
+                socket.send(JSON.stringify({
+                    type: 'typing',
+                    is_typing: false
+                }));
+            }
+        }, 1000);
+    });
+    
+    sendButton.onclick = sendMessage;
+    messageInput.onkeypress = function(e) {
+        if (e.key === 'Enter') sendMessage();
+    };
     
     function escapeHtml(text) {
         const div = document.createElement('div');
@@ -118,12 +412,34 @@
         return div.innerHTML;
     }
     
-    sendButton.onclick = sendMessage;
-    messageInput.onkeypress = function(e) {
-        if (e.key === 'Enter') sendMessage();
-    };
+    // Закрытие модального окна по Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && videoModal.style.display === 'flex') {
+            endVideoCall();
+        }
+    });
     
-    connectWebSocket();
+    // Прокрутка вниз
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    // Запуск WebSocket
+    connectWebSocket();
+
+
+// Проверка поддержки при загрузке страницы
+window.addEventListener('load', function() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('WebRTC не поддерживается');
+        const videoBtn = document.getElementById('video-call-btn');
+        if (videoBtn) {
+            videoBtn.disabled = true;
+            videoBtn.style.opacity = '0.5';
+            videoBtn.title = 'Ваш браузер не поддерживает видеозвонки';
+        }
+    } else {
+        console.log('WebRTC поддерживается');
+    }
+});
+
 </script>
 {% endblock %}

@@ -335,21 +335,23 @@ class ChatRoom(models.Model):
 
 
 class Message(models.Model):
-    """
-    Модель сообщения в чате.
-    Привязана к чат-комнате.
-    """
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages', verbose_name='Комната')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages', verbose_name='Отправитель')
-    content = models.TextField('Сообщение')
+    content = models.TextField('Сообщение', blank=True)  # blank=True теперь
+    attachment = models.FileField('Вложение', upload_to='chat_attachments/', null=True, blank=True)
+    attachment_type = models.CharField('Тип вложения', max_length=20, blank=True, choices=(
+        ('image', 'Изображение'),
+        ('file', 'Файл'),
+    ))
     is_read = models.BooleanField('Прочитано', default=False)
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     
     def __str__(self):
+        if self.attachment:
+            return f"{self.sender.username}: [Вложение]"
         return f"{self.sender.username}: {self.content[:50]}"
     
     def mark_as_read(self):
-        """Отметить сообщение как прочитанное"""
         if not self.is_read:
             self.is_read = True
             self.save()

@@ -91,3 +91,7 @@ LOGOUT_REDIRECT_URL = 'login'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'core.User'
+
+# Максимальный размер файла (10MB)
+DATA_UPLOAD_MAX_NUMBER_FILES = 10
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
