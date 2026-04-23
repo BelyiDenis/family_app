@@ -17,7 +17,12 @@
                 <h3 style="font-size: 20px; font-weight: 700;">Общий семейный чат</h3>
                 <p style="color: #718096; margin-top: 4px;">Все члены семьи могут общаться здесь</p>
             </div>
-            <div style="font-size: 28px; color: #667eea;">→</div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div id="general-unread" class="unread-badge" data-room="general" style="display: none; background: #f56565; color: white; border-radius: 20px; padding: 5px 12px; font-size: 14px; font-weight: bold;">
+                    0
+                </div>
+                <div style="font-size: 28px; color: #667eea;">→</div>
+            </div>
         </div>
     </div>
     
@@ -28,7 +33,7 @@
         {% if private_chats %}
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 {% for chat_info in private_chats %}
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f7fafc; border-radius: 16px; cursor: pointer;" 
+                <div class="private-chat-item" data-room="{{ chat_info.chat.name }}" style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f7fafc; border-radius: 16px; cursor: pointer;" 
                      onclick="window.location.href='{% url 'chat_room' chat_info.chat.name %}'">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <div style="width: 55px; height: 55px; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: white;">
@@ -36,18 +41,9 @@
                         </div>
                         <div>
                             <div style="font-weight: 700; font-size: 16px;">{{ chat_info.other_user.username }}</div>
-                            <div style="font-size: 13px; color: #718096; margin-top: 4px;">
-                                {% if chat_info.last_message %}
-                                    {% if chat_info.last_message.content %}
-                                        {{ chat_info.last_message.content|truncatechars:40 }}
-                                    {% elif chat_info.last_message.attachment %}
-                                        📎 Вложение
-                                    {% else %}
-                                        Напишите первое сообщение
-                                    {% endif %}
-                                {% else %}
-                                    Напишите первое сообщение
-                                {% endif %}
+                            <!-- Превью сообщения УДАЛЕНО - теперь только имя пользователя -->
+                            <div style="font-size: 12px; color: #a0aec0; margin-top: 4px;">
+                                💬 Нажмите для переписки
                             </div>
                         </div>
                     </div>
@@ -57,11 +53,9 @@
                                 {{ chat_info.last_message.created_at|date:"H:i d.m" }}
                             </div>
                         {% endif %}
-                        {% if chat_info.unread_count > 0 %}
-                            <div style="background: #f56565; color: white; border-radius: 20px; padding: 3px 10px; font-size: 12px; margin-top: 5px;">
-                                {{ chat_info.unread_count }}
-                            </div>
-                        {% endif %}
+                        <div id="unread-{{ chat_info.chat.name|slugify }}" class="unread-badge" data-room="{{ chat_info.chat.name }}" style="{% if chat_info.unread_count > 0 %}display: inline-block;{% else %}display: none;{% endif %} background: #f56565; color: white; border-radius: 20px; padding: 3px 10px; font-size: 12px; margin-top: 5px; font-weight: bold;">
+                            {{ chat_info.unread_count }}
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -91,4 +85,169 @@
         </div>
     </div>
 </div>
+
+<script>
+    // ==================== ОБНОВЛЕНИЕ СЧЕТЧИКОВ ====================
+    
+    // Функция для обновления счетчика непрочитанных сообщений
+    function updateUnreadCount(roomName) {
+        // Для общего чата
+        if (roomName === 'general') {
+            const generalBadge = document.getElementById('general-unread');
+            if (generalBadge) {
+                generalBadge.style.display = 'none';
+                generalBadge.textContent = '0';
+            }
+        } else {
+            // Для приватного чата
+            const roomId = roomName.replace(/[^a-zA-Z0-9]/g, '_');
+            const privateBadge = document.getElementById(`unread-${roomId}`);
+            if (privateBadge) {
+                privateBadge.style.display = 'none';
+                privateBadge.textContent = '0';
+            }
+        }
+    }
+    
+    // Функция для получения всех непрочитанных счетчиков с сервера
+    function fetchUnreadCounts() {
+        fetch('/chat/unread_count/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Обновляем счетчики для всех чатов
+                for (const [roomName, count] of Object.entries(data.unread_counts)) {
+                    if (roomName === 'general') {
+                        const generalBadge = document.getElementById('general-unread');
+                        if (generalBadge && count > 0) {
+                            generalBadge.textContent = count;
+                            generalBadge.style.display = 'inline-block';
+                        } else if (generalBadge) {
+                            generalBadge.style.display = 'none';
+                        }
+                    } else {
+                        const roomId = roomName.replace(/[^a-zA-Z0-9]/g, '_');
+                        const privateBadge = document.getElementById(`unread-${roomId}`);
+                        if (privateBadge && count > 0) {
+                            privateBadge.textContent = count;
+                            privateBadge.style.display = 'inline-block';
+                        } else if (privateBadge) {
+                            privateBadge.style.display = 'none';
+                        }
+                    }
+                }
+                
+                // Скрываем счетчики для чатов без непрочитанных
+                document.querySelectorAll('.unread-badge').forEach(badge => {
+                    const room = badge.dataset.room;
+                    if (room && !data.unread_counts[room]) {
+                        badge.style.display = 'none';
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Error fetching unread counts:', error));
+    }
+    
+    // Получение CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Обновляем счетчики каждые 15 секунд
+    setInterval(function() {
+        fetchUnreadCounts();
+    }, 15000);
+    
+    // Обновляем при фокусе на окне
+    window.addEventListener('focus', function() {
+        fetchUnreadCounts();
+    });
+    
+    // При загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchUnreadCounts();
+    });
+    
+    // Делаем функцию глобальной для доступа из других окон (из чата)
+    window.updateUnreadCount = updateUnreadCount;
+    
+    // Функция для отметки сообщений как прочитанных при входе в чат
+    window.markMessagesAsRead = function(roomName) {
+        fetch(`/chat/mark_read/${roomName}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Обновляем счетчики после отметки
+                fetchUnreadCounts();
+            }
+        })
+        .catch(error => console.error('Error marking messages as read:', error));
+    };
+    
+    // Анимация при наведении на чаты
+    document.querySelectorAll('.card, .private-chat-item').forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(5px)';
+            this.style.transition = 'all 0.3s ease';
+        });
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0)';
+        });
+    });
+</script>
+
+<style>
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .private-chat-item {
+        transition: all 0.3s ease;
+    }
+    
+    .private-chat-item:hover {
+        background: #e2e8f0 !important;
+        transform: translateX(5px);
+    }
+    
+    .unread-badge {
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+</style>
 {% endblock %}

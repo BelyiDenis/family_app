@@ -669,3 +669,22 @@ def family_change_role(request, user_id):
     
     messages.success(request, f'Роль {member.username} изменена на {member.get_role_display()}')
     return redirect('family_manage')
+
+@login_required
+def mark_messages_as_read(request, room_name):
+    """Отмечает все сообщения в комнате как прочитанные"""
+    if not request.user.family:
+        return JsonResponse({'success': False, 'error': 'No family'})
+    
+    try:
+        room = ChatRoom.objects.get(name=room_name, family=request.user.family)
+        
+        # Отмечаем все непрочитанные сообщения от других пользователей
+        updated = Message.objects.filter(
+            room=room,
+            is_read=False
+        ).exclude(sender=request.user).update(is_read=True)
+        
+        return JsonResponse({'success': True, 'updated': updated})
+    except ChatRoom.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Room not found'})
