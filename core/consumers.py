@@ -1,6 +1,8 @@
 import json
+import base64
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.core.files.base import ContentFile
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -23,30 +25,84 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print(f"❌ Disconnected from {self.room_name}")
     
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        message = data.get('message', '')
-        username = self.scope['user'].username
-        
-        await self.save_message(message, username)
-        
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
-                'message': message,
-                'username': username,
-            }
-        )
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type', 'message')
+            
+            if message_type == 'message':
+                message = data.get('message', '')
+                username = self.scope['user'].username
+                
+                await self.save_message(message, username, None, None)
+                
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'message': message,
+                        'username': username,
+                        'attachment': None,
+                        'attachment_type': None,
+                    }
+                )
+            
+            elif message_type == 'attachment':
+                attachment_data = data.get('attachment')
+                attachment_type = data.get('attachment_type')
+                filename = data.get('filename', 'file')
+                username = self.scope['user'].username
+                
+                # Сохраняем вложение
+                attachment_file = await self.save_attachment(attachment_data, filename, attachment_type)
+                
+                await self.save_message("", username, attachment_file, attachment_type)
+                
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'message': '',
+                        'username': username,
+                        'attachment': {
+                            'url': attachment_file.url if hasattr(attachment_file, 'url') else None,
+                            'type': attachment_type,
+                            'filename': filename,
+                        },
+                        'attachment_type': attachment_type,
+                    }
+                )
+            
+            elif message_type == 'typing':
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'user_typing',
+                        'username': self.scope['user'].username,
+                        'is_typing': data.get('is_typing', False),
+                    }
+                )
+                
+        except Exception as e:
+            print(f"Error in receive: {e}")
     
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'type': 'message',
             'message': event['message'],
             'username': event['username'],
+            'attachment': event.get('attachment'),
+            'attachment_type': event.get('attachment_type'),
+        }))
+    
+    async def user_typing(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'typing',
+            'username': event['username'],
+            'is_typing': event['is_typing'],
         }))
     
     @database_sync_to_async
-    def save_message(self, message, username):
+    def save_message(self, message, username, attachment_file, attachment_type):
         from .models import ChatRoom, Message
         from django.contrib.auth import get_user_model
         User = get_user_model()
@@ -60,5 +116,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         Message.objects.create(
             room=room,
             sender=user,
-            content=message
+            content=message,
+            attachment=attachment_file,
+            attachment_type=attachment_type,
         )
+    
+    @database_sync_to_async
+    def save_attachment(self, attachment_data, filename, attachment_type):
+        from django.core.files.base import ContentFile
+        import base64
+        
+        # Декодируем base64
+        format, imgstr = attachment_data.split(';base64,') 
+        ext = format.split('/')[-1]
+        data = ContentFile(base64.b64decode(imgstr), name=f'{filename}.{ext}')
+        
+        return data
