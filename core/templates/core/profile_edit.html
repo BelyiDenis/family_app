@@ -1,0 +1,106 @@
+{% extends 'core/base.html' %}
+{% block title %}Мой профиль{% endblock %}
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <div class="card">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="font-size: 64px; margin-bottom: 16px;">👤</div>
+            <h1 style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">
+                Мой профиль
+            </h1>
+            <p style="color: #718096;">Редактируйте информацию о себе</p>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> Имя пользователя</label>
+                <input type="text" name="username" value="{{ user.username }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-envelope"></i> Email</label>
+                <input type="email" name="email" value="{{ user.email }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-phone"></i> Телефон</label>
+                <input type="text" name="phone" value="{{ user.phone|default:'' }}">
+                <small style="font-size: 12px; color: #718096;">Необязательно</small>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-users"></i> Роль</label>
+                <select name="role">
+                    <option value="parent" {% if user.role == 'parent' %}selected{% endif %}>👨‍👩 Родитель</option>
+                    <option value="child" {% if user.role == 'child' %}selected{% endif %}>👶 Ребёнок</option>
+                    <option value="elder" {% if user.role == 'elder' %}selected{% endif %}>👵 Пожилой</option>
+                </select>
+                <small style="font-size: 12px; color: #718096;">Роль определяет доступ к функциям</small>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-image"></i> Аватар</label>
+                {% if user.avatar %}
+                    <div style="margin-bottom: 15px;">
+                        <img src="{{ user.avatar.url }}" alt="Avatar" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #667eea;">
+                    </div>
+                {% else %}
+                    <div style="margin-bottom: 15px;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 32px;">
+                            {{ user.username|first|upper }}
+                        </div>
+                    </div>
+                {% endif %}
+                <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif">
+                <small style="font-size: 12px; color: #718096;">JPEG, PNG, GIF. Максимум 5MB</small>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="fas fa-save"></i> Сохранить изменения
+                </button>
+                <a href="{% url 'dashboard' %}" class="btn btn-secondary" style="flex: 1; text-align: center;">
+                    <i class="fas fa-times"></i> Отмена
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-group {
+        margin-bottom: 24px;
+    }
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 14px;
+    }
+    input, select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        font-family: 'Inter', sans-serif;
+    }
+    input:focus, select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    input[type="file"] {
+        padding: 10px;
+        background: #f7fafc;
+    }
+    small {
+        display: block;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}

@@ -501,3 +501,100 @@ def family_members(request):
         'is_parent': request.user.is_parent(),
     }
     return render(request, 'core/family_members.html', context)
+
+# ==================== ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ ====================
+
+@login_required
+def profile_edit(request):
+    """Редактирование профиля пользователя"""
+    if request.method == 'POST':
+        # Обновляем данные пользователя
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        phone = request.POST.get('phone')
+        role = request.POST.get('role')
+        
+        if username:
+            request.user.username = username
+        if email:
+            request.user.email = email
+        if phone:
+            request.user.phone = phone
+        if role and role in dict(User.ROLE_CHOICES):
+            request.user.role = role
+        
+        # Обработка аватара
+        if request.FILES.get('avatar'):
+            request.user.avatar = request.FILES['avatar']
+        
+        request.user.save()
+        messages.success(request, 'Профиль обновлён!')
+        return redirect('profile_edit')
+    
+    return render(request, 'core/profile_edit.html', {'user': request.user})
+
+
+# ==================== УПРАВЛЕНИЕ СЕМЬЁЙ (ТОЛЬКО ДЛЯ РОДИТЕЛЕЙ) ====================
+
+@login_required
+def family_manage(request):
+    """Страница управления семьёй (только для родителей)"""
+    if not request.user.family:
+        return redirect('family_setup')
+    
+    if not request.user.is_parent():
+        messages.error(request, 'Только родители могут управлять семьёй')
+        return redirect('dashboard')
+    
+    family = request.user.family
+    members = User.objects.filter(family=family)
+    
+    context = {
+        'family': family,
+        'members': members,
+        'member_count': members.count(),
+    }
+    return render(request, 'core/family_manage.html', context)
+
+
+@login_required
+def family_remove_member(request, user_id):
+    """Удаление участника из семьи (только для родителей)"""
+    if not request.user.is_parent():
+        messages.error(request, 'Только родители могут удалять участников')
+        return redirect('dashboard')
+    
+    if request.user.id == user_id:
+        messages.error(request, 'Вы не можете удалить себя из семьи')
+        return redirect('family_manage')
+    
+    member = get_object_or_404(User, id=user_id, family=request.user.family)
+    member.family = None
+    member.save()
+    
+    messages.success(request, f'{member.username} удалён из семьи')
+    return redirect('family_manage')
+
+
+@login_required
+def family_change_role(request, user_id):
+    """Изменение роли участника (только для родителей)"""
+    if not request.user.is_parent():
+        messages.error(request, 'Только родители могут менять роли')
+        return redirect('dashboard')
+    
+    if request.user.id == user_id:
+        messages.error(request, 'Вы не можете изменить свою роль')
+        return redirect('family_manage')
+    
+    new_role = request.POST.get('role')
+    if new_role not in dict(User.ROLE_CHOICES):
+        messages.error(request, 'Неверная роль')
+        return redirect('family_manage')
+    
+    member = get_object_or_404(User, id=user_id, family=request.user.family)
+    member.role = new_role
+    member.save()
+    
+    messages.success(request, f'Роль {member.username} изменена на {member.get_role_display()}')
+    return redirect('family_manage')

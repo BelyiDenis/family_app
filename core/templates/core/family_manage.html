@@ -1,0 +1,89 @@
+{% extends 'core/base.html' %}
+{% block title %}Управление семьёй{% endblock %}
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div class="card">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="font-size: 64px; margin-bottom: 16px;">🏠</div>
+            <h1 style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">
+                Управление семьёй
+            </h1>
+            <p style="color: #718096;">Семья: <strong>{{ family.name }}</strong></p>
+            <p style="color: #718096; font-size: 14px;">Код приглашения: <strong style="font-size: 18px; letter-spacing: 2px;">{{ family.invite_code }}</strong></p>
+            <p style="color: #718096; font-size: 14px;">Всего участников: <strong>{{ member_count }}</strong></p>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="font-size: 20px; font-weight: 700;">👨‍👩‍👧‍👦 Участники семьи</h2>
+                <a href="{% url 'family_invite' %}" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                    <i class="fas fa-key"></i> Показать код
+                </a>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                {% for member in members %}
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f7fafc; border-radius: 16px; flex-wrap: wrap; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        {% if member.avatar %}
+                            <img src="{{ member.avatar.url }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                        {% else %}
+                            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px;">
+                                {{ member.username|first|upper }}
+                            </div>
+                        {% endif %}
+                        <div>
+                            <div style="font-weight: 700;">{{ member.username }}</div>
+                            <div style="font-size: 13px; color: #718096;">{{ member.email }}</div>
+                            <div style="margin-top: 5px;">
+                                <span style="display: inline-block; padding: 3px 10px; background: 
+                                    {% if member.role == 'parent' %}#667eea
+                                    {% elif member.role == 'child' %}#48bb78
+                                    {% else %}#ed8936{% endif %}; 
+                                    color: white; border-radius: 20px; font-size: 11px;">
+                                    {{ member.get_role_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if member.id != user.id %}
+                    <div style="display: flex; gap: 8px;">
+                        <form method="post" action="{% url 'family_change_role' member.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <select name="role" onchange="this.form.submit()" style="padding: 8px 12px; font-size: 13px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                                <option value="parent" {% if member.role == 'parent' %}selected{% endif %}>👨‍👩 Родитель</option>
+                                <option value="child" {% if member.role == 'child' %}selected{% endif %}>👶 Ребёнок</option>
+                                <option value="elder" {% if member.role == 'elder' %}selected{% endif %}>👵 Пожилой</option>
+                            </select>
+                        </form>
+                        <a href="{% url 'family_remove_member' member.id %}" class="btn btn-danger" style="padding: 8px 12px; font-size: 13px;" onclick="return confirm('Вы уверены, что хотите удалить {{ member.username }} из семьи?')">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                    {% else %}
+                    <span style="font-size: 12px; color: #718096; background: #e2e8f0; padding: 5px 12px; border-radius: 20px;">Это вы</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> На дашборд
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    select {
+        cursor: pointer;
+        background: white;
+    }
+    select:hover {
+        background: #f0f2f5;
+    }
+</style>
+{% endblock %}

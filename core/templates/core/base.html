@@ -87,6 +87,7 @@
             display: flex;
             gap: 8px;
             align-items: center;
+            flex-wrap: wrap;
         }
         
         .nav-links a {
@@ -107,13 +108,26 @@
             transform: translateY(-2px);
         }
         
+        /* Выпадающее меню пользователя */
         .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            position: relative;
             margin-left: 15px;
             padding-left: 15px;
             border-left: 1px solid #e2e8f0;
+        }
+        
+        .user-menu {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 10px;
+            border-radius: 30px;
+            transition: all 0.2s;
+        }
+        
+        .user-menu:hover {
+            background: rgba(0, 0, 0, 0.05);
         }
         
         .user-avatar {
@@ -126,16 +140,87 @@
             justify-content: center;
             color: white;
             font-weight: 600;
+            font-size: 18px;
         }
         
         .user-name {
             font-weight: 600;
             color: #2d3748;
+            font-size: 14px;
         }
         
         .user-role {
+            font-size: 11px;
+            color: #718096;
+        }
+        
+        /* Выпадающее меню */
+        .user-dropdown {
+            display: none;
+            position: absolute;
+            top: 60px;
+            right: 0;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            min-width: 260px;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        
+        .user-dropdown.show {
+            display: block;
+        }
+        
+        .dropdown-header {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f7fafc;
+        }
+        
+        .dropdown-header .username {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .dropdown-header .email {
             font-size: 12px;
             color: #718096;
+            margin-top: 4px;
+        }
+        
+        .dropdown-divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 8px 0;
+        }
+        
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: #2d3748;
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+        
+        .dropdown-item:hover {
+            background: #f0f2f5;
+        }
+        
+        .dropdown-item i {
+            width: 20px;
+            font-size: 14px;
+        }
+        
+        .dropdown-item-danger {
+            color: #e53e3e;
+        }
+        
+        .dropdown-item-danger:hover {
+            background: #fff5f5;
         }
         
         .logout-btn {
@@ -399,34 +484,62 @@
         /* Медиатека */
         .media-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
         }
         
-        .media-item {
+        .media-card {
             background: white;
-            border-radius: 16px;
+            border-radius: 20px;
             overflow: hidden;
             transition: all 0.3s ease;
-            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
-        .media-item:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        .media-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
         }
         
         .media-preview {
-            height: 160px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 220px;
+            background: #f0f2f5;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 64px;
+            position: relative;
+            overflow: hidden;
         }
         
-        .media-info {
-            padding: 12px;
+        .media-preview img,
+        .media-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+        
+        .media-card:hover .media-preview img,
+        .media-card:hover .media-preview video {
+            transform: scale(1.05);
+        }
+        
+        .reaction-btn {
+            background: #f0f2f5;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .reaction-btn:hover {
+            background: #e2e8f0;
+            transform: scale(1.05);
         }
         
         /* Адаптивность */
@@ -456,6 +569,14 @@
             .stats-grid, .action-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .nav-container {
+                padding: 0 15px;
+            }
+            
+            .logo-text {
+                display: none;
+            }
         }
         
         /* Анимации */
@@ -481,10 +602,12 @@
     {% if user.is_authenticated %}
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">
-                <span>🏠</span>
-                <span class="logo-text">Моя Семья</span>
-            </div>
+            <a href="{% url 'dashboard' %}" style="text-decoration: none;">
+                <div class="logo">
+                    <span>🏠</span>
+                    <span class="logo-text">Моя Семья</span>
+                </div>
+            </a>
             <div class="nav-links">
                 <a href="{% url 'dashboard' %}">
                     <span>📊</span>
@@ -502,21 +625,54 @@
                     <span>🖼️</span>
                     <span>Медиатека</span>
                 </a>
+                <a href="{% url 'chat_list' %}">
+                    <span>💬</span>
+                    <span>Чаты</span>
+                </a>
+                
                 <div class="user-info">
-                    <div class="user-avatar">
-                        {{ user.username|first|upper }}
+                    <div class="user-menu" onclick="toggleUserMenu()">
+                        {% if user.avatar %}
+                            <img src="{{ user.avatar.url }}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        {% else %}
+                            <div class="user-avatar">
+                                {{ user.username|first|upper }}
+                            </div>
+                        {% endif %}
+                        <div>
+                            <div class="user-name">{{ user.username }}</div>
+                            <div class="user-role">{{ user.get_role_display }}</div>
+                        </div>
+                        <i class="fas fa-chevron-down" style="font-size: 12px; color: #718096;"></i>
                     </div>
-                    <div>
-                        <div class="user-name">{{ user.username }}</div>
-                        <div class="user-role">{{ user.get_role_display }}</div>
+                    
+                    <!-- Выпадающее меню -->
+                    <div id="userDropdown" class="user-dropdown">
+                        <div class="dropdown-header">
+                            <div class="username">{{ user.username }}</div>
+                            <div class="email">{{ user.email }}</div>
+                        </div>
+                        
+                        <a href="{% url 'profile_edit' %}" class="dropdown-item">
+                            <i class="fas fa-user"></i> Мой профиль
+                        </a>
+                        
+                        {% if user.is_parent %}
+                            <a href="{% url 'family_manage' %}" class="dropdown-item">
+                                <i class="fas fa-users"></i> Управление семьёй
+                            </a>
+                        {% endif %}
+                        
+                        <a href="{% url 'family_invite' %}" class="dropdown-item">
+                            <i class="fas fa-key"></i> Код приглашения
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="{% url 'logout' %}" class="dropdown-item dropdown-item-danger">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
                     </div>
-                    <a href="{% url 'logout' %}" class="btn logout-btn" style="padding: 8px 16px;">
-                        <span>🚪</span>
-                        <span>Выйти</span>
-                    <a href="{% url 'chat_list' %}">
-                        <span>💬</span>
-                        <span>Чаты</span>
-                    </a>
                 </div>
             </div>
         </div>
@@ -535,5 +691,31 @@
         
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        function toggleUserMenu() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
+        }
+        
+        // Закрыть меню при клике вне его
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('userDropdown');
+            const userMenu = document.querySelector('.user-menu');
+            if (dropdown && userMenu && !userMenu.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+        
+        // Закрыть меню при нажатии Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const dropdown = document.getElementById('userDropdown');
+                if (dropdown) {
+                    dropdown.classList.remove('show');
+                }
+            }
+        });
+    </script>
 </body>
 </html>
