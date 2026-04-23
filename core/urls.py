@@ -26,4 +26,7 @@ urlpatterns = [
     path('chat/private/<int:user_id>/', views.create_private_chat, name='create_private_chat'),
 
     path('media/reaction/<int:media_id>/', views.media_add_reaction, name='media_add_reaction'),
+
+    path('family/setup/', views.family_setup, name='family_setup'),
+    path('family/invite/', views.family_invite, name='family_invite'),
 ]

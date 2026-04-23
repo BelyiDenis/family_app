@@ -46,3 +46,9 @@ class MediaItemForm(forms.ModelForm):
     class Meta:
         model = MediaItem
         fields = ['title', 'file', 'type']
+
+class CreateFamilyForm(forms.Form):
+    family_name = forms.CharField(max_length=100, label='Название семьи', widget=forms.TextInput(attrs={'placeholder': 'Например: Семья Петровых'}))
+
+class JoinFamilyForm(forms.Form):
+    invite_code = forms.CharField(max_length=10, label='Код приглашения', widget=forms.TextInput(attrs={'placeholder': 'XXXXXX'}))

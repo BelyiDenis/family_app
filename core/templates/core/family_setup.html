@@ -1,0 +1,71 @@
+{% extends 'core/base.html' %}
+{% block title %}Создать или присоединиться{% endblock %}
+{% block content %}
+<div style="max-width: 600px; margin: 50px auto;">
+    <div style="text-align: center; margin-bottom: 40px;">
+        <div style="font-size: 64px; margin-bottom: 16px;">🏠</div>
+        <h1 style="font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">
+            Добро пожаловать!
+        </h1>
+        <p style="color: #718096; margin-top: 8px;">Создайте свою семью или присоединитесь к существующей</p>
+    </div>
+    
+    <div style="display: grid; gap: 24px;">
+        <!-- Создать семью -->
+        <div class="card">
+            <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">✨ Создать новую семью</h2>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Название семьи</label>
+                    {{ create_form.family_name }}
+                </div>
+                <button type="submit" name="create_family" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-plus"></i> Создать семью
+                </button>
+            </form>
+        </div>
+        
+        <!-- Присоединиться -->
+        <div class="card">
+            <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">🔗 Присоединиться к семье</h2>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Код приглашения</label>
+                    {{ join_form.invite_code }}
+                    <div style="font-size: 12px; color: #718096; margin-top: 5px;">Попросите код у создателя семьи</div>
+                </div>
+                <button type="submit" name="join_family" class="btn btn-success" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-sign-in-alt"></i> Присоединиться
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-group {
+        margin-bottom: 20px;
+    }
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+    input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+</style>
+{% endblock %}

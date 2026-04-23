@@ -1,11 +1,15 @@
 from django.contrib import admin
-from .models import User, Task, Document, MediaItem
+from .models import User, Family, Task, Document, MediaItem, ChatRoom, Message
+
+@admin.register(Family)
+class FamilyAdmin(admin.ModelAdmin):
+    list_display = ['name', 'invite_code', 'created_at', 'created_by']
+    search_fields = ['name', 'invite_code']
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ['username', 'email', 'role', 'is_active']
-    list_filter = ['role']
-    search_fields = ['username', 'email']
+    list_display = ['username', 'email', 'role', 'family', 'is_active']
+    list_filter = ['role', 'family']
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
