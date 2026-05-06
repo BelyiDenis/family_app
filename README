@@ -1,0 +1,16 @@
+ВАЖНО: работает с python 3.11
+
+Установка окружения
+python -m venv venv
+pip install -r requirements.txt
+
+ЗАПУСК ПРОЕКТА 
+# 1. Создайте миграции базы данных
+python manage.py makemigrations
+# 2. Примените миграции
+python manage.py migrate
+# 3. Создайте суперпользователя (для входа в админку)
+python manage.py createsuperuser
+# Введите: admin, admin@example.com, пароль: admin123
+# 4. Запустите сервер
+daphne -b 127.0.0.1 -p 8000 family_app.asgi:application
