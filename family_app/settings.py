@@ -1,13 +1,22 @@
 import os
 from pathlib import Path
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-8x!q3@k9m#p2$v5n&b7c*e4r6t8y0u1i2o3p4a5s6d7f8g9h0j1k2l3'
+# ========== БЕЗОПАСНОСТЬ ДЛЯ RENDER ==========
+# Используем секретный ключ из переменных окружения на Render, или локальный для разработки
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-8x!q3@k9m#p2$v5n&b7c*e4r6t8y0u1i2o3p4a5s6d7f8g9h0j1k2l3')
 
-DEBUG = True
+# ========== НАСТРОЙКА ХОСТОВ ДЛЯ RENDER ==========
+ALLOWED_HOSTS = ['*']  # Временно оставляем звездочку, но Render переопределит
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS = [RENDER_EXTERNAL_HOSTNAME, 'localhost', '127.0.0.1']
 
-ALLOWED_HOSTS = ['*']
+# ========== РЕЖИМ ОТЛАДКИ ==========
+# На Render DEBUG будет False, локально - True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 INSTALLED_APPS = [
     'daphne',  # ДОЛЖЕН БЫТЬ ПЕРВЫМ!
@@ -23,6 +32,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ДОБАВЛЕНО для статики на Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -59,12 +69,20 @@ CHANNEL_LAYERS = {
     },
 }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# ========== БАЗА ДАННЫХ: РАБОТАЕТ И ЛОКАЛЬНО, И НА RENDER ==========
+if 'DATABASE_URL' in os.environ:
+    # На Render используем PostgreSQL
+    DATABASES = {
+        'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
     }
-}
+else:
+    # Локально используем SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -78,9 +96,12 @@ TIME_ZONE = 'Europe/Moscow'
 USE_I18N = True
 USE_TZ = True
 
+# ========== СТАТИЧЕСКИЕ ФАЙЛЫ ДЛЯ RENDER ==========
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Добавляем хранилище WhiteNoise для сжатия статики
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
