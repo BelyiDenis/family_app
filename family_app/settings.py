@@ -9,10 +9,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-8x!q3@k9m#p2$v5n&b7c*e4r6t8y0u1i2o3p4a5s6d7f8g9h0j1k2l3')
 
 # ========== НАСТРОЙКА ХОСТОВ ДЛЯ RENDER ==========
-ALLOWED_HOSTS = ['*']  # Временно оставляем звездочку, но Render переопределит
+# ========== НАСТРОЙКИ ХОСТОВ И CSRF ДЛЯ RENDER ==========
+ALLOWED_HOSTS = ['*']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS = [RENDER_EXTERNAL_HOSTNAME, 'localhost', '127.0.0.1']
+    
+    # ДОБАВЬ ЭТИ ТРИ СТРОЧКИ:
+    CSRF_TRUSTED_ORIGINS = [f'https://{RENDER_EXTERNAL_HOSTNAME}']
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
 
 # ========== РЕЖИМ ОТЛАДКИ ==========
 # На Render DEBUG будет False, локально - True
